@@ -38,8 +38,9 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-//            .baseUrl("http://10.0.2.2:3000/api/") Mock API server
-            .baseUrl("http://192.168.110.160:3000/api/") // Mock API server
+//            .baseUrl("http://10.0.2.2:3000/api/") // Mock API server for Android emulator
+            .baseUrl("http://192.168.110.160:3000/api/") // Mock API server for physical device
+//            .baseUrl("http://10.170.15.138/api/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

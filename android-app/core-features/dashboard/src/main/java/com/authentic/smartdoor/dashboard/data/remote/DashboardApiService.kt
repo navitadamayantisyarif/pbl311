@@ -58,7 +58,15 @@ interface DashboardApiService {
     
     @GET("history/summary")
     suspend fun getHistorySummary(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("period") period: String = "7d"
+    ): Response<Map<String, Any>>
+    
+    // Analytics endpoints
+    @GET("analytics/summary")
+    suspend fun getAnalyticsSummary(
+        @Header("Authorization") token: String,
+        @Query("period") period: String = "7d"
     ): Response<Map<String, Any>>
     
     // User endpoints
@@ -71,6 +79,11 @@ interface DashboardApiService {
     suspend fun getUserProfile(
         @Header("Authorization") token: String
     ): Response<UserProfileResponse>
+    
+    @POST("auth/logout")
+    suspend fun logout(
+        @Header("Authorization") token: String
+    ): Response<Map<String, Any>>
 }
 
 

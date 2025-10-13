@@ -237,22 +237,36 @@ class DashboardRepositoryImpl @Inject constructor(
         return try {
             val token = preferencesManager.getAuthToken()
             if (token.isNullOrEmpty()) {
+                println("DEBUG: No authentication token")
                 return Result.failure(Exception("No authentication token"))
             }
 
+            println("DEBUG: Calling API getAccessHistory with token: ${token.take(10)}...")
             val response = apiService.getAccessHistory("Bearer $token")
+            println("DEBUG: API response code: ${response.code()}")
+            
             if (response.isSuccessful) {
                 val accessLogResponse = response.body()
+                println("DEBUG: API response success: ${accessLogResponse?.success}")
+                println("DEBUG: API response data count: ${accessLogResponse?.data?.size}")
+                
                 if (accessLogResponse?.success == true && accessLogResponse.data != null) {
                     val accessLogs = accessLogResponse.data.map { it.toDomain() }
+                    println("DEBUG: Mapped access logs count: ${accessLogs.size}")
+                    if (accessLogs.isNotEmpty()) {
+                        println("DEBUG: First mapped log - location: ${accessLogs[0].location}, action: ${accessLogs[0].action}")
+                    }
                     Result.success(accessLogs)
                 } else {
+                    println("DEBUG: API response failed: ${accessLogResponse?.message}")
                     Result.failure(Exception(accessLogResponse?.message ?: "Failed to get access history"))
                 }
             } else {
+                println("DEBUG: API call failed with code: ${response.code()}")
                 Result.failure(Exception("API Error: ${response.code()}"))
             }
         } catch (e: Exception) {
+            println("DEBUG: Exception in getAccessHistory: ${e.message}")
             Result.failure(e)
         }
     }
@@ -292,6 +306,31 @@ class DashboardRepositoryImpl @Inject constructor(
                 } else {
                     Result.failure(Exception(userResponse?.message ?: "Failed to get user profile"))
                 }
+            } else {
+                Result.failure(Exception("API Error: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserProfile(): Result<User> {
+        return getCurrentUser()
+    }
+
+    override suspend fun logout(): Result<Unit> {
+        return try {
+            val token = preferencesManager.getAuthToken()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            // Call logout API
+            val response = apiService.logout("Bearer $token")
+            if (response.isSuccessful) {
+                // Clear stored auth data
+                preferencesManager.clearAuthData()
+                Result.success(Unit)
             } else {
                 Result.failure(Exception("API Error: ${response.code()}"))
             }
