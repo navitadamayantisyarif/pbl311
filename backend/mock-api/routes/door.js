@@ -1,4 +1,5 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { authenticateToken, randomErrorMiddleware } = require('../middleware/common');
 const { loadSampleData } = require('../data/sampleData');
 
@@ -8,18 +9,86 @@ const router = express.Router();
 router.use(authenticateToken);
 router.use(randomErrorMiddleware);
 
-// GET /api/door/status - Get door status
+// GET /api/door/status - Get door status for current user
 router.get('/status', async (req, res) => {
   try {
     const data = loadSampleData();
     
-    // Get door statuses
-    const doorStatuses = data.doorStatus || [];
+    // Get user ID from JWT token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Access token required',
+        code: 'TOKEN_MISSING'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    let userId;
+    try {
+      const decoded = jwt.verify(token, 'mock-secret-key-for-testing');
+      userId = decoded.userId;
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token',
+        code: 'TOKEN_INVALID'
+      });
+    }
+
+    // Get user-door access relationships for this specific user
+    const userDoorAccess = data.userDoor || [];
+    const userAccessibleDoors = userDoorAccess.filter(access => access.user_id === parseInt(userId));
+    
+    let accessibleDoors = [];
+    
+    if (userAccessibleDoors.length > 0) {
+      // User has existing door access in userDoor data
+      const doors = data.doors || [];
+      accessibleDoors = userAccessibleDoors.map(userAccess => {
+        const door = doors.find(d => d.id === userAccess.door_id);
+        if (!door) return null;
+        
+        return {
+          ...door,
+          access_granted_at: userAccess.created_at
+        };
+      }).filter(door => door !== null);
+    } else {
+      // User doesn't have door access in userDoor data, give them access to some random doors
+      const doors = data.doors || [];
+      const doorCount = Math.floor(Math.random() * 3) + 1; // 1-3 doors
+      const selectedDoors = [];
+      
+      for (let i = 0; i < doorCount; i++) {
+        const randomDoor = doors[Math.floor(Math.random() * doors.length)];
+        if (!selectedDoors.includes(randomDoor.id)) {
+          selectedDoors.push(randomDoor.id);
+        }
+      }
+      
+      accessibleDoors = selectedDoors.map(doorId => {
+        const door = doors.find(d => d.id === doorId);
+        return {
+          ...door,
+          access_granted_at: new Date().toISOString()
+        };
+      });
+    }
+    
+    if (accessibleDoors.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No doors accessible for this user'
+      });
+    }
     
     res.json({
       success: true,
-      data: doorStatuses,
-      message: 'Door status retrieved successfully'
+      data: accessibleDoors,
+      message: 'User accessible doors retrieved successfully'
     });
 
   } catch (error) {
@@ -46,11 +115,11 @@ router.post('/control', async (req, res) => {
       });
     }
 
-    const validActions = ['lock', 'unlock'];
+    const validActions = ['buka', 'tutup']; // Using Indonesian terms from sample data
     if (!validActions.includes(action)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid action. Must be lock or unlock',
+        error: 'Invalid action. Must be buka or tutup',
         code: 'INVALID_ACTION'
       });
     }
@@ -61,13 +130,13 @@ router.post('/control', async (req, res) => {
       action,
       success: true,
       timestamp: new Date().toISOString(),
-      message: `Door ${action}ed successfully`
+      message: `Door ${action === 'buka' ? 'opened' : 'closed'} successfully`
     };
 
     res.json({
       success: true,
       data: result,
-      message: `Door ${action}ed successfully`
+      message: `Door ${action === 'buka' ? 'opened' : 'closed'} successfully`
     });
 
   } catch (error) {
@@ -77,106 +146,6 @@ router.post('/control', async (req, res) => {
       error: 'Failed to control door',
       message: error.message,
       code: 'DOOR_CONTROL_ERROR'
-    });
-  }
-});
-
-// GET /api/door/user-access - Get doors accessible by user
-router.get('/user-access', async (req, res) => {
-  try {
-    const data = loadSampleData();
-    
-    // Get user-door access relationships
-    const userDoorAccess = data.userDoorAccess || [];
-    
-    res.json({
-      success: true,
-      data: userDoorAccess,
-      message: 'User door access retrieved successfully'
-    });
-
-  } catch (error) {
-    console.error('Get user door access error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get user door access',
-      message: error.message,
-      code: 'USER_ACCESS_ERROR'
-    });
-  }
-});
-
-// GET /api/door/logs - Get door access logs
-router.get('/logs', async (req, res) => {
-  try {
-    const { limit = 50, offset = 0 } = req.query;
-    const data = loadSampleData();
-    
-    // Get access logs
-    let accessLogs = data.accessLogs || [];
-    
-    // Apply pagination
-    const totalLogs = accessLogs.length;
-    const paginatedLogs = accessLogs.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-    
-    res.json({
-      success: true,
-      data: paginatedLogs,
-      pagination: {
-        total: totalLogs,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        has_more: parseInt(offset) + parseInt(limit) < totalLogs
-      },
-      message: 'Door logs retrieved successfully'
-    });
-
-  } catch (error) {
-    console.error('Get door logs error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get door logs',
-      message: error.message,
-      code: 'DOOR_LOGS_ERROR'
-    });
-  }
-});
-
-// POST /api/door/emergency-unlock - Emergency unlock
-router.post('/emergency-unlock', async (req, res) => {
-  try {
-    const { door_id } = req.body;
-
-    if (!door_id) {
-      return res.status(400).json({
-        success: false,
-        error: 'Door ID is required',
-        code: 'MISSING_DOOR_ID'
-      });
-    }
-
-    // Mock emergency unlock response
-    const result = {
-      door_id,
-      action: 'emergency_unlock',
-      success: true,
-      timestamp: new Date().toISOString(),
-      message: 'Emergency unlock activated successfully'
-    };
-
-    res.json({
-      success: true,
-      data: result,
-      message: 'Emergency unlock activated successfully'
-    });
-
-  } catch (error) {
-    console.error('Emergency unlock error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to emergency unlock',
-      message: error.message,
-      code: 'EMERGENCY_UNLOCK_ERROR'
     });
   }
 });

@@ -90,82 +90,65 @@ router.post('/capture', async (req, res) => {
   }
 });
 
-// GET /api/camera/photos - Get camera photos
-router.get('/photos', async (req, res) => {
+// GET /api/camera/capture/:id - Get camera capture by ID
+router.get('/capture/:id', async (req, res) => {
   try {
-    const { door_id, limit = 20, offset = 0 } = req.query;
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Capture ID is required',
+        code: 'MISSING_CAPTURE_ID'
+      });
+    }
+
     const data = loadSampleData();
     
-    // Get camera captures
-    let captures = data.cameraCaptures || [];
+    // Get camera captures from sample data
+    const captures = data.cameraCaptures || [];
+    const capture = captures.find(c => c.id === parseInt(id));
     
-    // Filter by door_id if provided
-    if (door_id) {
-      captures = captures.filter(capture => capture.door_id === door_id);
+    if (!capture) {
+      return res.status(404).json({
+        success: false,
+        error: 'Camera capture not found',
+        code: 'CAPTURE_NOT_FOUND'
+      });
     }
+
+    // Get door information for this capture
+    const doors = data.doors || [];
+    const door = doors.find(d => d.id === capture.door_id);
     
-    // Apply pagination
-    const totalCaptures = captures.length;
-    const paginatedCaptures = captures.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-    
+    // Return capture data with additional information
+    const captureData = {
+      ...capture,
+      image_url: `https://picsum.photos/640/480?random=${capture.id}`,
+      thumbnail_url: `https://picsum.photos/160/120?random=${capture.id}`,
+      door: door ? {
+        id: door.id,
+        name: door.name,
+        location: door.location,
+        locked: door.locked,
+        battery_level: door.battery_level,
+        camera_active: door.camera_active
+      } : null
+    };
+
     res.json({
       success: true,
-      data: paginatedCaptures,
-      pagination: {
-        total: totalCaptures,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        has_more: parseInt(offset) + parseInt(limit) < totalCaptures
-      },
-      message: 'Camera photos retrieved successfully'
+      data: captureData,
+      message: 'Camera capture retrieved successfully'
     });
 
   } catch (error) {
-    console.error('Get camera photos error:', error);
+    console.error('Get camera capture error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get camera photos',
+      error: 'Failed to get camera capture',
       message: error.message,
-      code: 'CAMERA_PHOTOS_ERROR'
-    });
-  }
-});
-
-// GET /api/camera/status - Get camera status
-router.get('/status', async (req, res) => {
-  try {
-    const { door_id } = req.query;
-    const data = loadSampleData();
-    
-    // Get door statuses to check camera status
-    const doorStatuses = data.doorStatus || [];
-    
-    let cameraStatuses = doorStatuses.map(door => ({
-      door_id: door.door_id,
-      door_name: door.door_name,
-      location: door.location,
-      camera_active: door.camera_active,
-      last_update: door.last_update
-    }));
-    
-    // Filter by door_id if provided
-    if (door_id) {
-      cameraStatuses = cameraStatuses.filter(status => status.door_id === door_id);
-    }
-    
-    res.json({
-      success: true,
-      data: cameraStatuses,
-      message: 'Camera status retrieved successfully'
-    });
-
-  } catch (error) {
-    console.error('Get camera status error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get camera status',
-      message: error.message,
-      code: 'CAMERA_STATUS_ERROR'
+      code: 'GET_CAPTURE_ERROR'
     });
   }
 });
