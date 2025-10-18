@@ -11,9 +11,9 @@ router.use(randomErrorMiddleware);
 // POST /api/auth/google - Google authentication
 router.post('/google', async (req, res) => {
   try {
-    const { token, email, name, picture } = req.body;
+    const { id_token, email, name, picture } = req.body;
 
-    if (!token || !email) {
+    if (!id_token || !email) {
       return res.status(400).json({
         success: false,
         error: 'Google token and email are required',
@@ -21,14 +21,64 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    // Mock Google token validation
-    const userData = {
-      id: `google_${Date.now()}`,
-      email,
-      name: name || 'Google User',
-      picture: picture || 'https://via.placeholder.com/150',
-      provider: 'google'
-    };
+    // Mock Google token validation - check if user exists in sample data
+    const data = loadSampleData();
+    let userData = data.users.find(user => user.email === email);
+    let isNewUser = false;
+    
+    if (!userData) {
+      // Create new user if not found
+      userData = {
+        id: data.users.length + 1,
+        google_id: `google_${Date.now()}`,
+        email,
+        name: name || 'Google User',
+        role: 'user',
+        face_registered: false,
+        created_at: new Date().toISOString(),
+        phone: null,
+        avatar: picture || 'https://via.placeholder.com/150'
+      };
+      isNewUser = true;
+    } else {
+      // Update existing user with new data
+      userData = {
+        ...userData,
+        name: name || userData.name,
+        avatar: picture || userData.avatar
+      };
+    }
+
+    // Check if user has door access, if not give them access to some doors
+    const userDoorAccess = data.userDoor || [];
+    const userAccess = userDoorAccess.filter(access => access.user_id === userData.id);
+    
+    if (userAccess.length === 0) {
+      // Give user access to some random doors (1-3 doors)
+      const doors = data.doors || [];
+      const doorCount = Math.floor(Math.random() * 3) + 1; // 1-3 doors
+      const selectedDoors = [];
+      
+      for (let i = 0; i < doorCount; i++) {
+        const randomDoor = doors[Math.floor(Math.random() * doors.length)];
+        if (!selectedDoors.includes(randomDoor.id)) {
+          selectedDoors.push(randomDoor.id);
+        }
+      }
+      
+      // Add door access for this user (this is just for response, not persisted)
+      userData.accessible_doors = selectedDoors.map(doorId => {
+        const door = doors.find(d => d.id === doorId);
+        return {
+          id: door.id,
+          name: door.name,
+          location: door.location,
+          locked: door.locked,
+          battery_level: door.battery_level,
+          camera_active: door.camera_active
+        };
+      });
+    }
 
     // Generate JWT token
     const jwtToken = jwt.sign(
@@ -45,8 +95,12 @@ router.post('/google', async (req, res) => {
       success: true,
       data: {
         user: userData,
-        token: jwtToken,
-        expiresIn: '24h'
+        tokens: {
+          access_token: jwtToken,
+          refresh_token: jwtToken + '_refresh',
+          token_type: 'Bearer',
+          expires_in: 86400 // 24 hours in seconds
+        }
       },
       message: 'Authentication successful'
     });
@@ -90,50 +144,6 @@ router.post('/logout', async (req, res) => {
       error: 'Logout failed',
       message: error.message,
       code: 'LOGOUT_ERROR'
-    });
-  }
-});
-
-// GET /api/auth/me - Get current user profile
-router.get('/me', async (req, res) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: 'Access token required',
-        code: 'TOKEN_MISSING'
-      });
-    }
-
-    // Verify JWT token
-    const decoded = jwt.verify(token, 'mock-secret-key-for-testing');
-    
-    // Mock user data
-    const userData = {
-      id: decoded.userId,
-      email: decoded.email,
-      name: decoded.name,
-      role: 'user',
-      face_registered: true,
-      created_at: new Date().toISOString(),
-      phone: '+6281234567890',
-      avatar: 'https://via.placeholder.com/150'
-    };
-
-    res.json({
-      success: true,
-      data: userData
-    });
-
-  } catch (error) {
-    console.error('Get user profile error:', error);
-    res.status(401).json({
-      success: false,
-      error: 'Invalid or expired token',
-      code: 'TOKEN_INVALID'
     });
   }
 });

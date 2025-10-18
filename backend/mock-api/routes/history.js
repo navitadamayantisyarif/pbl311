@@ -23,16 +23,16 @@ router.get('/access', async (req, res) => {
     
     const data = loadSampleData();
     
-    // Get access logs
+    // Get access logs from the new sample data structure
     let accessLogs = data.accessLogs || [];
     
     // Apply filters
     if (door_id) {
-      accessLogs = accessLogs.filter(log => log.door_id === door_id);
+      accessLogs = accessLogs.filter(log => log.door_id === parseInt(door_id));
     }
     
     if (user_id) {
-      accessLogs = accessLogs.filter(log => log.user_id === user_id);
+      accessLogs = accessLogs.filter(log => log.user_id === parseInt(user_id));
     }
     
     if (success !== undefined) {
@@ -52,9 +52,41 @@ router.get('/access', async (req, res) => {
     const totalLogs = accessLogs.length;
     const paginatedLogs = accessLogs.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
     
+    // Enrich with user and door information
+    const users = data.users || [];
+    const doors = data.doors || [];
+    const cameraCaptures = data.cameraCaptures || [];
+    
+    const enrichedLogs = paginatedLogs.map(log => {
+      const user = users.find(u => u.id === log.user_id);
+      const door = doors.find(d => d.id === log.door_id);
+      const cameraCapture = log.camera_capture_id ? cameraCaptures.find(c => c.id === log.camera_capture_id) : null;
+      
+      return {
+        ...log,
+        user: user ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar
+        } : null,
+        door: door ? {
+          id: door.id,
+          name: door.name,
+          location: door.location
+        } : null,
+        camera_capture: cameraCapture ? {
+          id: cameraCapture.id,
+          filename: cameraCapture.filename,
+          event_type: cameraCapture.event_type,
+          timestamp: cameraCapture.timestamp
+        } : null
+      };
+    });
+    
     res.json({
       success: true,
-      data: paginatedLogs,
+      data: enrichedLogs,
       pagination: {
         total: totalLogs,
         limit: parseInt(limit),
@@ -82,7 +114,6 @@ router.get('/photos', async (req, res) => {
       limit = 20, 
       offset = 0, 
       door_id, 
-      user_id, 
       start_date, 
       end_date,
       event_type 
@@ -90,16 +121,12 @@ router.get('/photos', async (req, res) => {
     
     const data = loadSampleData();
     
-    // Get camera captures
+    // Get camera captures from the new sample data structure
     let captures = data.cameraCaptures || [];
     
     // Apply filters
     if (door_id) {
-      captures = captures.filter(capture => capture.door_id === door_id);
-    }
-    
-    if (user_id) {
-      captures = captures.filter(capture => capture.user_id === user_id);
+      captures = captures.filter(capture => capture.door_id === parseInt(door_id));
     }
     
     if (event_type) {
@@ -118,9 +145,25 @@ router.get('/photos', async (req, res) => {
     const totalCaptures = captures.length;
     const paginatedCaptures = captures.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
     
+    // Enrich with door information
+    const doors = data.doors || [];
+    
+    const enrichedCaptures = paginatedCaptures.map(capture => {
+      const door = doors.find(d => d.id === capture.door_id);
+      
+      return {
+        ...capture,
+        door: door ? {
+          id: door.id,
+          name: door.name,
+          location: door.location
+        } : null
+      };
+    });
+    
     res.json({
       success: true,
-      data: paginatedCaptures,
+      data: enrichedCaptures,
       pagination: {
         total: totalCaptures,
         limit: parseInt(limit),
@@ -137,69 +180,6 @@ router.get('/photos', async (req, res) => {
       error: 'Failed to get photo history',
       message: error.message,
       code: 'PHOTO_HISTORY_ERROR'
-    });
-  }
-});
-
-// GET /api/history/summary - Get history summary (for analytics)
-router.get('/summary', async (req, res) => {
-  try {
-    const { period = '7d' } = req.query;
-    const data = loadSampleData();
-    
-    // Calculate date range based on period
-    const now = new Date();
-    let dateFrom;
-    
-    switch (period) {
-      case '24h':
-        dateFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '90d':
-        dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    }
-    
-    // Filter data by period
-    const accessLogs = data.accessLogs.filter(log => new Date(log.timestamp) >= dateFrom);
-    const photos = data.cameraCaptures.filter(photo => new Date(photo.timestamp) >= dateFrom);
-    
-    // Calculate summary
-    const summary = {
-      total_access: accessLogs.length,
-      successful_access: accessLogs.filter(log => log.success).length,
-      failed_access: accessLogs.filter(log => !log.success).length,
-      total_photos: photos.length,
-      unique_users: [...new Set(accessLogs.map(log => log.user_id))].length,
-      unique_doors: [...new Set(accessLogs.map(log => log.door_id))].length,
-      period,
-      date_range: {
-        from: dateFrom.toISOString(),
-        to: now.toISOString()
-      }
-    };
-    
-    res.json({
-      success: true,
-      data: summary,
-      message: 'History summary retrieved successfully'
-    });
-
-  } catch (error) {
-    console.error('Get history summary error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get history summary',
-      message: error.message,
-      code: 'HISTORY_SUMMARY_ERROR'
     });
   }
 });
