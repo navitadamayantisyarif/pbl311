@@ -44,15 +44,10 @@ dependencies {
     val retrofitVersion = "2.11.0"
     val okhttpVersion = "4.12.0"
 
-    // Authentication module dependency
-    implementation(project(":authentication"))
+    // Authentication and Storage module dependencies
+    implementation(project(":storage"))
 
-    // Room dependencies
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-
-    // KSP untuk annotation processing
-    ksp("androidx.room:room-compiler:$roomVersion")
+    // Room provided by storage module
 
     // Retrofit core
     implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
@@ -92,6 +87,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    
+    // SwipeRefresh for pull-to-refresh functionality
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+    
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.ui.tooling)

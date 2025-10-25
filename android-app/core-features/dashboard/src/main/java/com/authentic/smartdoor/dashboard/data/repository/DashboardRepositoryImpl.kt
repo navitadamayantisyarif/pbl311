@@ -1,342 +1,288 @@
 package com.authentic.smartdoor.dashboard.data.repository
 
-import com.authentic.smartdoor.dashboard.data.mappers.AccessLogMapper.toDomain
-import com.authentic.smartdoor.dashboard.data.mappers.DoorMapper.toDomain
-import com.authentic.smartdoor.dashboard.data.mappers.NotificationMapper.toDomain
-import com.authentic.smartdoor.dashboard.data.remote.DashboardApiService
-import com.authentic.smartdoor.dashboard.data.remote.dto.DoorControlRequest
-import com.authentic.smartdoor.dashboard.data.remote.dto.MarkReadRequest
 import com.authentic.smartdoor.dashboard.domain.model.AccessLog
 import com.authentic.smartdoor.dashboard.domain.model.DashboardData
-import com.authentic.smartdoor.dashboard.domain.model.Door
-import com.authentic.smartdoor.dashboard.domain.model.Notification
-import com.authentic.smartdoor.dashboard.domain.model.SystemHealth
 import com.authentic.smartdoor.dashboard.domain.model.SystemStatus
-import com.authentic.smartdoor.dashboard.domain.model.User
 import com.authentic.smartdoor.dashboard.domain.repository.DashboardRepository
-import com.authentic.smartdoor.authentication.utils.PreferencesManager
+import com.authentic.smartdoor.storage.mappers.toEntity
+import com.authentic.smartdoor.storage.mappers.toGenericMetric
+import com.authentic.smartdoor.storage.mappers.toGenericChartData
+import com.authentic.smartdoor.storage.mappers.toGenericActiveHour
+import com.authentic.smartdoor.storage.mappers.toGenericAvailableDoor
+import com.authentic.smartdoor.storage.mappers.toGenericAccessLog
+import com.authentic.smartdoor.storage.remote.datasource.DashboardRemoteDataSource
+import com.authentic.smartdoor.dashboard.data.mappers.toDomainModel
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class DashboardRepositoryImpl @Inject constructor(
-    private val apiService: DashboardApiService,
-    private val preferencesManager: PreferencesManager
+    private val remote: DashboardRemoteDataSource,
+    private val local: com.authentic.smartdoor.storage.local.datasource.DashboardLocalDataSource,
+    private val doorMapper: DoorEntityToDomainMapper,
+    private val notificationMapper: NotificationEntityToDomainMapper,
+    private val accessLogMapper: AccessLogEntityToDomainMapper
 ) : DashboardRepository {
 
     override suspend fun getDashboardData(): Result<DashboardData> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
+        return runCatching {
+            val doorsRes = remote.getDoorStatus()
+            val notifRes = remote.getNotifications(limit = 20)
+            val logsRes = remote.getAccessHistory(limit = 10)
+            val userRes = remote.getUserProfile()
+
+            val doors = doorsRes.data.orEmpty().map { doorMapper.map(it.toEntity()) }
+            val notifications = notifRes.data.orEmpty().map { notificationMapper.map(it.toEntity()) }
+            val accessLogs = logsRes.data.orEmpty().map { it.toDomainModel() }
+            val user = userRes.data?.let { userDto ->
+                com.authentic.smartdoor.dashboard.domain.model.User(
+                    id = userDto.id.toString(),
+                    name = userDto.name,
+                    email = userDto.email,
+                    avatar = userDto.avatar,
+                    role = userDto.role,
+                    faceRegistered = userDto.face_registered
+                )
             }
 
-            // Fetch all data from API
-            val doorsResult = getUserAccessibleDoors()
-            val notificationsResult = getNotifications()
-            val accessHistoryResult = getAccessHistory()
-            val userResult = getCurrentUser()
+            // Clear old data and save fresh data to local database
+            local.clearAll()
+            val doorEntities = doorsRes.data.orEmpty().map { it.toEntity() }
+            local.saveDoorStatuses(doorEntities)
 
-            // Get data from API results
-            val doors = doorsResult.getOrNull() ?: emptyList()
-            val notifications = notificationsResult.getOrNull() ?: emptyList()
-            val accessLogs = accessHistoryResult.getOrNull() ?: emptyList()
-            val user = userResult.getOrNull() ?: return Result.failure(Exception("Failed to get user data"))
+            // Save notifications to local database
+            val notificationEntities = notifRes.data.orEmpty().map { it.toEntity() }
+            local.saveNotifications(notificationEntities)
 
-            // Create system status based on API data
             val systemStatus = SystemStatus(
-                totalDoors = doors.size,
-                activeDoors = doors.count { it.cameraActive },
-                totalUsers = 1, // This could come from API in the future
-                onlineUsers = 1, // This could come from API in the future
-                systemHealth = if (doors.isNotEmpty()) {
-                    if (doors.all { it.batteryLevel > 20 }) SystemHealth.GOOD
-                    else if (doors.any { it.batteryLevel <= 20 }) SystemHealth.WARNING
-                    else SystemHealth.GOOD
-                } else SystemHealth.WARNING
+                doorsOnline = doors.count { !it.locked },
+                camerasActive = doors.count { it.cameraActive },
+                batteryOk = doors.all { it.batteryLevel >= 20 }
             )
 
-            val dashboardData = DashboardData(
+            DashboardData(
                 user = user,
                 doors = doors,
                 notifications = notifications,
-                recentAccessLogs = accessLogs.take(5), // Last 5 logs
+                recentAccessLogs = accessLogs,
                 systemStatus = systemStatus
             )
-
-            Result.success(dashboardData)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
-    override suspend fun getDoorStatus(): Result<Door> {
-        return try {
-            // Fallback to getting first available door status
-            val doors = getUserAccessibleDoors()
-            doors.getOrNull()?.firstOrNull()?.let { 
-                Result.success(it)
-            } ?: Result.failure(Exception("No doors available"))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private suspend fun getUserAccessibleDoors(): Result<List<Door>> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            val response = apiService.getUserAccessibleDoors("Bearer $token")
-            if (response.isSuccessful) {
-                val doorListResponse = response.body()
-                if (doorListResponse?.success == true && doorListResponse.data != null) {
-                    val doors = doorListResponse.data.map { it.toDomain() }
-                    Result.success(doors)
-                } else {
-                    Result.failure(Exception(doorListResponse?.message ?: "Failed to get doors"))
-                }
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    override suspend fun getDoorStatusById(doorId: String): Result<Door> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            // Get all accessible doors and find the one with the specified ID
-            val allDoors = getUserAccessibleDoors()
-            val specificDoor = allDoors.getOrNull()?.find { it.id == doorId }
-            
-            specificDoor?.let {
-                Result.success(it)
-            } ?: Result.failure(Exception("Door with ID $doorId not found"))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    override suspend fun refreshData(): Result<DashboardData> = getDashboardData()
 
     override suspend fun controlDoor(action: String): Result<Boolean> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            // For now, control the first door or default door
-            val request = DoorControlRequest(action = action)
-            val response = apiService.controlDoor("Bearer $token", request)
-            
-            if (response.isSuccessful) {
-                val controlResponse = response.body()
-                Result.success(controlResponse?.success == true)
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runCatching {
+            val res = remote.controlDoor(action)
+            res.success && (res.data?.success == true)
         }
     }
-    
+
     override suspend fun controlDoorById(action: String, doorId: String): Result<Boolean> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            val request = DoorControlRequest(action = action, door_id = doorId)
-            val response = apiService.controlDoor("Bearer $token", request)
-            
-            if (response.isSuccessful) {
-                val controlResponse = response.body()
-                Result.success(controlResponse?.success == true)
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runCatching {
+            val id = doorId.toIntOrNull()
+            val res = remote.controlDoor(action, id)
+            res.success && (res.data?.success == true)
         }
     }
 
-    override suspend fun getNotifications(): Result<List<Notification>> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            val response = apiService.getNotifications("Bearer $token")
-            if (response.isSuccessful) {
-                val notificationResponse = response.body()
-                if (notificationResponse?.success == true && notificationResponse.data != null) {
-                    val notifications = notificationResponse.data.map { it.toDomain() }
-                    Result.success(notifications)
-                } else {
-                    Result.failure(Exception(notificationResponse?.message ?: "Failed to get notifications"))
-                }
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+    override suspend fun markNotificationsAsRead(ids: List<String>): Result<Unit> {
+        return runCatching {
+            val intIds = ids.mapNotNull { it.toIntOrNull() }
+            remote.markNotificationsAsRead(intIds)
+            Unit
         }
     }
 
     override suspend fun getUnreadNotificationCount(): Result<Int> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            val response = apiService.getUnreadNotificationCount("Bearer $token")
-            if (response.isSuccessful) {
-                val countResponse = response.body()
-                if (countResponse?.success == true && countResponse.data != null) {
-                    Result.success(countResponse.data)
-                } else {
-                    Result.failure(Exception(countResponse?.message ?: "Failed to get notification count"))
-                }
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun markNotificationsAsRead(notificationIds: List<String>): Result<Unit> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            val request = MarkReadRequest(notification_ids = notificationIds)
-            val response = apiService.markNotificationsAsRead("Bearer $token", request)
-            
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runCatching {
+            val notif = remote.getNotifications(limit = 100)
+            notif.data.orEmpty().count { !it.read }
         }
     }
 
     override suspend fun getAccessHistory(): Result<List<AccessLog>> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                println("DEBUG: No authentication token")
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            println("DEBUG: Calling API getAccessHistory with token: ${token.take(10)}...")
-            val response = apiService.getAccessHistory("Bearer $token")
-            println("DEBUG: API response code: ${response.code()}")
-            
-            if (response.isSuccessful) {
-                val accessLogResponse = response.body()
-                println("DEBUG: API response success: ${accessLogResponse?.success}")
-                println("DEBUG: API response data count: ${accessLogResponse?.data?.size}")
-                
-                if (accessLogResponse?.success == true && accessLogResponse.data != null) {
-                    val accessLogs = accessLogResponse.data.map { it.toDomain() }
-                    println("DEBUG: Mapped access logs count: ${accessLogs.size}")
-                    if (accessLogs.isNotEmpty()) {
-                        println("DEBUG: First mapped log - location: ${accessLogs[0].location}, action: ${accessLogs[0].action}")
-                    }
-                    Result.success(accessLogs)
-                } else {
-                    println("DEBUG: API response failed: ${accessLogResponse?.message}")
-                    Result.failure(Exception(accessLogResponse?.message ?: "Failed to get access history"))
-                }
-            } else {
-                println("DEBUG: API call failed with code: ${response.code()}")
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            println("DEBUG: Exception in getAccessHistory: ${e.message}")
-            Result.failure(e)
+        return runCatching {
+            val logs = remote.getAccessHistory(limit = 50)
+            logs.data.orEmpty().map { it.toDomainModel() }
         }
     }
 
-    override suspend fun refreshData(): Result<DashboardData> {
-        return getDashboardData()
-    }
-
-    private suspend fun getCurrentUser(): Result<User> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
+    override suspend fun getUserProfile(): Result<com.authentic.smartdoor.dashboard.domain.model.User?> {
+        return runCatching {
+            val userRes = remote.getUserProfile()
+            userRes.data?.let { userDto ->
+                com.authentic.smartdoor.dashboard.domain.model.User(
+                    id = userDto.id.toString(),
+                    name = userDto.name,
+                    email = userDto.email,
+                    avatar = userDto.avatar,
+                    role = userDto.role,
+                    faceRegistered = userDto.face_registered
+                )
             }
-
-            val response = apiService.getUserProfile("Bearer $token")
-            if (response.isSuccessful) {
-                val userResponse = response.body()
-                if (userResponse?.success == true && userResponse.data != null) {
-                    val userDto = userResponse.data
-                    val user = User(
-                        id = userDto.id,
-                        name = userDto.name,
-                        email = userDto.email,
-                        role = userDto.role,
-                        faceRegistered = userDto.face_registered,
-                        avatar = userDto.avatar,
-                        phone = userDto.phone,
-                        createdAt = try {
-                            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault())
-                                .parse(userDto.created_at)?.time ?: System.currentTimeMillis()
-                        } catch (e: Exception) {
-                            System.currentTimeMillis()
-                        }
-                    )
-                    Result.success(user)
-                } else {
-                    Result.failure(Exception(userResponse?.message ?: "Failed to get user profile"))
-                }
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
-    }
-
-    override suspend fun getUserProfile(): Result<User> {
-        return getCurrentUser()
     }
 
     override suspend fun logout(): Result<Unit> {
-        return try {
-            val token = preferencesManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No authentication token"))
-            }
-
-            // Call logout API
-            val response = apiService.logout("Bearer $token")
-            if (response.isSuccessful) {
-                // Clear stored auth data
-                preferencesManager.clearAuthData()
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("API Error: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runCatching {
+            remote.logout()
+            Unit
         }
     }
 
+    override suspend fun getNotifications(): Result<List<com.authentic.smartdoor.dashboard.domain.model.Notification>> {
+        return runCatching {
+            val notifRes = remote.getNotifications(limit = 50)
+            notifRes.data.orEmpty().map { notificationMapper.map(it.toEntity()) }
+        }
+    }
+
+    override suspend fun refreshNotifications(): Result<List<com.authentic.smartdoor.dashboard.domain.model.Notification>> {
+        return runCatching {
+            val notifRes = remote.getNotifications(limit = 50)
+            val notifications = notifRes.data.orEmpty().map { notificationMapper.map(it.toEntity()) }
+            
+            // Save to local database
+            val notificationEntities = notifRes.data.orEmpty().map { it.toEntity() }
+            local.saveNotifications(notificationEntities)
+            
+            notifications
+        }
+    }
+
+    override suspend fun getAnalyticsData(doorId: Int?, startDate: String?, endDate: String?): Result<com.authentic.smartdoor.dashboard.domain.model.AnalyticsData> {
+        return runCatching {
+            val analyticsRes = remote.getAnalyticsDashboard(doorId, startDate, endDate)
+            val data = analyticsRes.data ?: throw Exception("No analytics data received")
+            
+            // Convert DTOs to domain models using generic mappers
+            val totalAccessMetric = data.metrics.totalAccess.toGenericMetric()
+            val deniedAccessMetric = data.metrics.deniedAccess.toGenericMetric()
+            val lockedDoorsMetric = data.metrics.lockedDoors.toGenericMetric()
+            val openedDoorsMetric = data.metrics.openedDoors.toGenericMetric()
+            
+            val analyticsMetrics = com.authentic.smartdoor.dashboard.domain.model.AnalyticsMetrics(
+                totalAccess = com.authentic.smartdoor.dashboard.domain.model.AnalyticsMetric(
+                    value = totalAccessMetric.first,
+                    change = totalAccessMetric.second,
+                    changeType = data.metrics.totalAccess.changeType
+                ),
+                deniedAccess = com.authentic.smartdoor.dashboard.domain.model.AnalyticsMetric(
+                    value = deniedAccessMetric.first,
+                    change = deniedAccessMetric.second,
+                    changeType = data.metrics.deniedAccess.changeType
+                ),
+                lockedDoors = com.authentic.smartdoor.dashboard.domain.model.AnalyticsMetric(
+                    value = lockedDoorsMetric.first,
+                    change = lockedDoorsMetric.second,
+                    changeType = data.metrics.lockedDoors.changeType
+                ),
+                openedDoors = com.authentic.smartdoor.dashboard.domain.model.AnalyticsMetric(
+                    value = openedDoorsMetric.first,
+                    change = openedDoorsMetric.second,
+                    changeType = data.metrics.openedDoors.changeType
+                )
+            )
+            
+            val chartData = data.chartData.map { chartDto ->
+                val chartPair = chartDto.toGenericChartData()
+                com.authentic.smartdoor.dashboard.domain.model.ChartData(
+                    hour = chartPair.first,
+                    count = chartPair.second
+                )
+            }
+            
+            val activeHours = data.activeHours.map { activeHourDto ->
+                val activeHourTriple = activeHourDto.toGenericActiveHour()
+                com.authentic.smartdoor.dashboard.domain.model.ActiveHour(
+                    timeRange = activeHourTriple.first,
+                    count = activeHourTriple.second,
+                    progress = activeHourTriple.third
+                )
+            }
+            
+            val availableDoors = data.availableDoors.map { doorDto ->
+                val doorTriple = doorDto.toGenericAvailableDoor()
+                com.authentic.smartdoor.dashboard.domain.model.AvailableDoor(
+                    id = doorTriple.first,
+                    name = doorTriple.second,
+                    location = doorTriple.third
+                )
+            }
+            
+            // Get access logs for chart data
+            val accessLogs = data.accessLogs?.map { logDto ->
+                val logNonuple = logDto.toGenericAccessLog()
+                com.authentic.smartdoor.dashboard.domain.model.AccessLog(
+                    id = logNonuple.first,
+                    userId = logNonuple.second,
+                    doorId = logNonuple.third,
+                    action = logNonuple.fourth,
+                    timestamp = logNonuple.fifth,
+                    success = logNonuple.sixth,
+                    method = logNonuple.seventh,
+                    ipAddress = logNonuple.eighth,
+                    cameraCaptureId = logNonuple.ninth
+                )
+            }
+            
+            com.authentic.smartdoor.dashboard.domain.model.AnalyticsData(
+                metrics = analyticsMetrics,
+                chartData = chartData,
+                activeHours = activeHours,
+                availableDoors = availableDoors,
+                accessLogs = accessLogs
+            )
+        }
+    }
 }
+
+class DoorEntityToDomainMapper @Inject constructor() {
+    fun map(entity: com.authentic.smartdoor.storage.local.entities.DoorStatusEntity): com.authentic.smartdoor.dashboard.domain.model.Door {
+        return com.authentic.smartdoor.dashboard.domain.model.Door(
+            id = entity.id,
+            name = entity.name,
+            location = entity.location,
+            locked = entity.locked,
+            batteryLevel = entity.batteryLevel,
+            lastUpdate = entity.lastUpdate?.let { 
+                java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault())
+                    .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    .format(java.util.Date(it))
+            },
+            wifiStrength = entity.wifiStrength,
+            cameraActive = entity.cameraActive
+        )
+    }
+}
+
+class NotificationEntityToDomainMapper @Inject constructor() {
+    fun map(entity: com.authentic.smartdoor.storage.local.entities.NotificationEntity): com.authentic.smartdoor.dashboard.domain.model.Notification {
+        return com.authentic.smartdoor.dashboard.domain.model.Notification(
+            id = entity.id,
+            message = entity.message,
+            type = entity.type,
+            read = entity.read,
+            createdAt = "" // Convert timestamp back to string if needed
+        )
+    }
+}
+
+class AccessLogEntityToDomainMapper @Inject constructor() {
+    fun map(entity: com.authentic.smartdoor.storage.local.entities.AccessLogEntity): com.authentic.smartdoor.dashboard.domain.model.AccessLog {
+        return com.authentic.smartdoor.dashboard.domain.model.AccessLog(
+            id = entity.id,
+            userId = entity.userId,
+            doorId = "", // Entity doesn't store doorId, would need to be handled differently
+            action = entity.action,
+            timestamp = "", // Convert timestamp back to string if needed
+            success = entity.success,
+            method = entity.method,
+            ipAddress = entity.ipAddress,
+            cameraCaptureId = null // Entity doesn't store camera capture ID
+        )
+    }
+}
+

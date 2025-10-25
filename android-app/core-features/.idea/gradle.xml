@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/authentication" />
             <option value="$PROJECT_DIR$/dashboard" />
+            <option value="$PROJECT_DIR$/storage" />
           </set>
         </option>
       </GradleProjectSettings>

@@ -46,7 +46,10 @@ class AuthenticationActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AuthenticationTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = Color.White
+                ) { innerPadding ->
                     LoginScreen(modifier = Modifier.padding(innerPadding))
                 }
             }
@@ -62,6 +65,7 @@ fun LoginScreen(modifier: Modifier = Modifier, viewModel: AuthViewModel = hiltVi
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        android.util.Log.d("AuthenticationActivity", "Google Sign-In result received: ${result.resultCode}")
         viewModel.handleGoogleSignInResult(result.data)
     }
 
@@ -155,7 +159,9 @@ fun LoginScreen(modifier: Modifier = Modifier, viewModel: AuthViewModel = hiltVi
                     // Tombol Google - dengan drop shadow dan lebar yang sama
                     Button(
                         onClick = {
+                            android.util.Log.d("AuthenticationActivity", "=== Google Sign-In button clicked ===")
                             val intent = viewModel.getGoogleSignInIntent()
+                            android.util.Log.d("AuthenticationActivity", "Google Sign-In intent: $intent")
                             launcher.launch(intent)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White),

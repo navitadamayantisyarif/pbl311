@@ -49,6 +49,7 @@ import com.authentic.smartdoor.dashboard.domain.model.AccessLog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,10 +103,10 @@ private fun AccessHistoryDetailContent(
     onViewCamera: () -> Unit
 ) {
     val (icon, iconColor, statusText) = when {
-        accessLog.action.name == "UNLOCK" && accessLog.success -> {
+        accessLog.action == "buka" && accessLog.success -> {
             Triple(Icons.Default.LockOpen, Color(0xFF4FC3F7), "Berhasil dibuka")
         }
-        accessLog.action.name == "LOCK" && accessLog.success -> {
+        accessLog.action == "kunci" && accessLog.success -> {
             Triple(Icons.Default.Lock, Color(0xFF9C27B0), "Berhasil dikunci")
         }
         !accessLog.success -> {
@@ -200,16 +201,16 @@ private fun AccessHistoryDetailContent(
                 Column(
                     modifier = Modifier.padding(10.dp)
                 ) {
-                    DetailRow("Lokasi", accessLog.location)
+                    DetailRow("Lokasi", "Pintu ${accessLog.doorId}")
                     DetailRow("Waktu", formattedTime)
                     DetailRow("Alasan", if (accessLog.success) "akses valid" else "akses tidak valid")
                     DetailRow("Percobaan ke", "1")
                     DetailRow("Status", if (accessLog.success) "Diterima" else "Ditolak")
                     DetailRow("Tindakan", statusText)
-                    DetailRow("User", accessLog.userName)
-                    DetailRow("Metode", accessLog.method.name)
+                    DetailRow("User", "User ${accessLog.userId}")
+                    DetailRow("Metode", accessLog.method)
                     DetailRow("IP Address", accessLog.ipAddress)
-                    DetailRow("Device", accessLog.deviceInfo)
+                    DetailRow("Device", "Smart Door Lock")
                 }
             }
 
@@ -270,26 +271,31 @@ private fun DetailRow(
     }
 }
 
-private fun formatDetailTime(timestamp: Long): String {
-    val date = Date(timestamp)
-    val formatter = SimpleDateFormat("dd MMM yyyy, HH.mm.ss", Locale("id", "ID"))
-    return formatter.format(date)
+private fun formatDetailTime(timestamp: String): String {
+    return try {
+        val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        formatter.timeZone = TimeZone.getTimeZone("UTC")
+        val date = formatter.parse(timestamp)
+        val outputFormatter = SimpleDateFormat("dd MMM yyyy, HH.mm.ss", Locale("id", "ID"))
+        outputFormatter.format(date ?: Date())
+    } catch (e: Exception) {
+        "Waktu tidak diketahui"
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun AccessHistoryDetailModalPreview() {
-    val sampleAccessLog = AccessLog(
+    val sampleAccessLog = com.authentic.smartdoor.dashboard.domain.model.AccessLog(
         id = "1",
         userId = "user1",
-        userName = "John Doe",
-        action = com.authentic.smartdoor.dashboard.domain.model.AccessAction.UNLOCK,
-        timestamp = System.currentTimeMillis(),
+        doorId = "door1",
+        action = "buka",
+        timestamp = "2025-01-18T10:30:00.000Z",
         success = true,
-        method = com.authentic.smartdoor.dashboard.domain.model.AccessMethod.FACE_RECOGNITION,
-        location = "Pintu Lab A",
+        method = "face_recognition",
         ipAddress = "192.168.1.100",
-        deviceInfo = "Android 13"
+        cameraCaptureId = "capture_123"
     )
 
     AccessHistoryDetailModal(

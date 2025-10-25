@@ -39,10 +39,15 @@ class AuthViewModel @Inject constructor(
     }
 
     fun getGoogleSignInIntent(): Intent {
+        android.util.Log.d("AuthViewModel", "=== getGoogleSignInIntent called ===")
         return try {
+            android.util.Log.d("AuthViewModel", "Creating Google Sign-In intent...")
             val client = googleSignInHelper.getGoogleSignInClient()
-            client.signInIntent
+            val intent = client.signInIntent
+            android.util.Log.d("AuthViewModel", "Google Sign-In intent created successfully")
+            intent
         } catch (e: Exception) {
+            android.util.Log.e("AuthViewModel", "Failed to create Google Sign-In intent: ${e.message}", e)
             _uiState.value = _uiState.value.copy(
                 errorMessage = "Failed to initialize Google Sign-In: ${e.message}"
             )
@@ -51,6 +56,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun handleGoogleSignInResult(data: Intent?) {
+        android.util.Log.d("AuthViewModel", "=== handleGoogleSignInResult called ===")
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
@@ -63,8 +69,11 @@ class AuthViewModel @Inject constructor(
             }
 
             try {
+                android.util.Log.d("AuthViewModel", "Processing Google Sign-In result...")
                 val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                android.util.Log.d("AuthViewModel", "Google Sign-In task created, getting result...")
                 val account = task.getResult(ApiException::class.java)
+                android.util.Log.d("AuthViewModel", "Google Sign-In account: ${account?.email}")
 
                 if (account == null) {
                     _uiState.value = _uiState.value.copy(
@@ -91,6 +100,7 @@ class AuthViewModel @Inject constructor(
                     }
                 )
             } catch (e: ApiException) {
+                android.util.Log.e("AuthViewModel", "Google Sign-In ApiException: Status ${e.statusCode}, Message: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "Google Sign-In failed: Error ${e.statusCode} - ${e.message}"

@@ -23,3 +23,4 @@ rootProject.name = "SecureDoor"
 include(":app")
 include(":authentication")
 include(":dashboard")
+include(":storage")
