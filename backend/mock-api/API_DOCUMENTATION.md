@@ -152,7 +152,7 @@ Authorization: Bearer <jwt_token>
 
 **Valid Actions:**
 - `"buka"` - Buka pintu
-- `"tutup"` - Tutup pintu
+- `"kunci"` - Kunci pintu
 
 **Response:**
 ```json
@@ -691,3 +691,4 @@ Untuk pertanyaan atau masalah:
 4. Check network connection dan CORS settings
 
 **Happy Coding! 🎯**
+

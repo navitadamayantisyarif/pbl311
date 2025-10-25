@@ -45,6 +45,7 @@ dependencies {
 
     implementation(project(":authentication"))
     implementation(project(":dashboard"))
+    implementation(project(":storage"))
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.56.2")

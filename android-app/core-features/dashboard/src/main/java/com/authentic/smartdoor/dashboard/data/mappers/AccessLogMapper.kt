@@ -1,55 +1,51 @@
 package com.authentic.smartdoor.dashboard.data.mappers
 
-import com.authentic.smartdoor.dashboard.data.remote.dto.AccessLogDto
-import com.authentic.smartdoor.dashboard.domain.model.AccessAction
 import com.authentic.smartdoor.dashboard.domain.model.AccessLog
-import com.authentic.smartdoor.dashboard.domain.model.AccessMethod
-import java.text.SimpleDateFormat
-import java.util.*
+import com.authentic.smartdoor.dashboard.domain.model.CameraCapture
+import com.authentic.smartdoor.dashboard.domain.model.Door
+import com.authentic.smartdoor.dashboard.domain.model.User
+import com.authentic.smartdoor.storage.remote.dto.AccessLogDto
 
-object AccessLogMapper {
-    
-    fun AccessLogDto.toDomain(): AccessLog {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        
-        return AccessLog(
-            id = id,
-            userId = user_id,
-            userName = user_name,
-            action = mapAccessAction(action),
-            timestamp = try {
-                dateFormat.parse(timestamp)?.time ?: System.currentTimeMillis()
-            } catch (e: Exception) {
-                System.currentTimeMillis()
-            },
-            success = success,
-            method = mapAccessMethod(method),
-            location = location,
-            ipAddress = ip_address,
-            deviceInfo = device_info
-        )
-    }
-    
-    private fun mapAccessAction(action: String): AccessAction {
-        return when (action.lowercase()) {
-            "unlock" -> AccessAction.UNLOCK
-            "lock" -> AccessAction.LOCK
-            "access_denied" -> AccessAction.ACCESS_DENIED
-            "face_scan" -> AccessAction.FACE_SCAN
-            "manual_unlock" -> AccessAction.MANUAL_UNLOCK
-            "emergency_unlock" -> AccessAction.EMERGENCY_UNLOCK
-            else -> AccessAction.UNLOCK
+fun AccessLogDto.toDomainModel(): AccessLog {
+    return AccessLog(
+        id = id.toString(),
+        userId = user_id.toString(),
+        doorId = door_id.toString(),
+        action = action,
+        timestamp = timestamp,
+        success = success,
+        method = method,
+        ipAddress = ip_address,
+        cameraCaptureId = camera_capture_id?.toString(),
+        user = user?.let { userDto ->
+            User(
+                id = userDto.id.toString(),
+                name = userDto.name,
+                email = userDto.email,
+                avatar = userDto.avatar,
+                role = userDto.role,
+                faceRegistered = userDto.face_registered
+            )
+        },
+        door = door?.let { doorDto ->
+            Door(
+                id = doorDto.id.toString(),
+                name = doorDto.name,
+                location = doorDto.location,
+                locked = doorDto.locked,
+                batteryLevel = doorDto.battery_level,
+                lastUpdate = doorDto.last_update,
+                wifiStrength = doorDto.wifi_strength,
+                cameraActive = doorDto.camera_active
+            )
+        },
+        cameraCapture = camera_capture?.let { cameraDto ->
+            CameraCapture(
+                id = cameraDto.id.toString(),
+                filename = cameraDto.filename,
+                eventType = cameraDto.event_type,
+                timestamp = cameraDto.timestamp
+            )
         }
-    }
-    
-    private fun mapAccessMethod(method: String): AccessMethod {
-        return when (method.lowercase()) {
-            "face_recognition" -> AccessMethod.FACE_RECOGNITION
-            "mobile_app" -> AccessMethod.MOBILE_APP
-            "physical_key" -> AccessMethod.PHYSICAL_KEY
-            "emergency_code" -> AccessMethod.EMERGENCY_CODE
-            "remote_control" -> AccessMethod.REMOTE_CONTROL
-            else -> AccessMethod.MOBILE_APP
-        }
-    }
+    )
 }

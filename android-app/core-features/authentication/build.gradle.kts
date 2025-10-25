@@ -44,12 +44,8 @@ dependencies {
     val retrofitVersion = "2.11.0"
     val okhttpVersion = "4.12.0"
 
-    // Room dependencies
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-
-    // KSP untuk annotation processing
-    ksp("androidx.room:room-compiler:$roomVersion")
+    // Use storage module for Room
+    implementation(project(":storage"))
 
     // Retrofit core
     implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")

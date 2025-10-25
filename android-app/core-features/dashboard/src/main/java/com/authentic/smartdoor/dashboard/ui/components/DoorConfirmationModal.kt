@@ -38,7 +38,7 @@ import com.authentic.smartdoor.dashboard.R
 fun DoorConfirmationModal(
     isVisible: Boolean,
     doorName: String,
-    action: String, // "buka" atau "tutup"
+    action: String, // "buka" atau "kunci"
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
