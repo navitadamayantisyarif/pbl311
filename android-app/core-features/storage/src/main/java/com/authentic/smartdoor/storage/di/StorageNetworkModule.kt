@@ -33,7 +33,7 @@ object StorageNetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.143.141.163:3000/api/")
+            .baseUrl("https://pbl311-production.up.railway.app/api/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

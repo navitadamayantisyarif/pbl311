@@ -169,6 +169,49 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
+### GET /api/door/device/status/:door_id
+**PUBLIC ENDPOINT** - Mendapatkan status pintu untuk device pintu fisik (tanpa authentication JWT).
+
+Endpoint ini ditujukan untuk device pintu fisik yang memerlukan status pintu tanpa perlu authentication token.
+
+**Headers:** Tidak diperlukan JWT token
+
+**URL Parameters:**
+- `door_id` - ID pintu yang ingin dilihat statusnya
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "door_id": 1,
+    "status": "terkunci",
+    "locked": true,
+    "battery_level": 83,
+    "last_update": "2025-10-18T11:12:55.385Z"
+  },
+  "message": "Door status retrieved successfully"
+}
+```
+
+**Status Values:**
+- `"terkunci"` - Pintu terkunci
+- `"terbuka"` - Pintu terbuka
+
+**Example Request:**
+```bash
+GET http://localhost:3000/api/door/device/status/1
+```
+
+**Error Response (Door Not Found):**
+```json
+{
+  "success": false,
+  "error": "Door not found",
+  "code": "DOOR_NOT_FOUND"
+}
+```
+
 ---
 
 ## 👥 User Management
