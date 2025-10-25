@@ -24,11 +24,11 @@ class GoogleSignInHelper @Inject constructor(
             } catch (e: Exception) {
                 android.util.Log.e("GoogleSignInHelper", "Failed to get Client ID from strings.xml: ${e.message}")
                 // Fallback client ID - replace with your actual web client ID
-                "904749622966-5u5875kdik0vir2v8monrjja972f8ud0.apps.googleusercontent.com"
+                "904749622966-cjdllvu4eatk6tr8dlvspggops8cvdpl.apps.googleusercontent.com"
             }
             
             // Try using Android Client ID instead of Web Client ID
-            val finalClientId = "904749622966-k9m2mf682a93ej1e991m2nkj5aal8k65.apps.googleusercontent.com"
+            val finalClientId = "904749622966-cjdllvu4eatk6tr8dlvspggops8cvdpl.apps.googleusercontent.com"
             android.util.Log.d("GoogleSignInHelper", "Using Android Client ID: $finalClientId")
 
             android.util.Log.d("GoogleSignInHelper", "Using Client ID: $finalClientId")
