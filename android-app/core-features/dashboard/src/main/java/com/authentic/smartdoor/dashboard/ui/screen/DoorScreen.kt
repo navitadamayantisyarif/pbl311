@@ -81,7 +81,7 @@ fun DoorScreen(
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToCameraLiveStream: (Int) -> Unit = {}
+    onNavigateToCameraLiveStream: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = remember { mutableStateOf("") }
@@ -173,6 +173,9 @@ fun DoorScreen(
                             showConfirmationModal = true
                         },
                         onCameraClick = { onNavigateToCameraLiveStream(door.id) }
+                        // onCameraClick = {
+                        //     door.id.toIntOrNull()?.let { onNavigateToCameraLiveStream(it) }
+                        // }
                     )
                 }
 

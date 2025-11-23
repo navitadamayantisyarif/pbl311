@@ -74,7 +74,7 @@ sealed class DashboardScreen {
     object Analytics : DashboardScreen()
     object Profile : DashboardScreen()
     object EditProfile : DashboardScreen()
-    data class CameraLiveStream(val doorId: Int) : DashboardScreen()
+    data class CameraLiveStream(val doorId: String) : DashboardScreen()
 }
 
 @Composable
