@@ -59,7 +59,7 @@ import com.authentic.smartdoor.dashboard.ui.components.BottomBar
 import com.authentic.smartdoor.dashboard.ui.screen.AccessHistoryScreen
 import com.authentic.smartdoor.dashboard.ui.screen.AccessHistoryDetailScreen
 import com.authentic.smartdoor.dashboard.ui.screen.AnalyticsScreen
-import com.authentic.smartdoor.dashboard.ui.screen.CameraLiveStreamScreen
+import com.authentic.smartdoor.camera.ui.screen.CameraLiveStreamScreen
 import com.authentic.smartdoor.dashboard.ui.screen.DoorScreen
 import com.authentic.smartdoor.dashboard.ui.screen.NotificationScreen
 import com.authentic.smartdoor.dashboard.ui.screen.NotificationSettingsScreen
@@ -74,7 +74,7 @@ sealed class DashboardScreen {
     object Analytics : DashboardScreen()
     object Profile : DashboardScreen()
     object EditProfile : DashboardScreen()
-    data class CameraLiveStream(val doorName: String) : DashboardScreen()
+    data class CameraLiveStream(val doorId: Int) : DashboardScreen()
 }
 
 @Composable
@@ -93,8 +93,8 @@ fun DashboardNavigation(
                 onNavigateToAnalytics = { currentScreen = DashboardScreen.Analytics },
                 onNavigateToNotifications = { currentScreen = DashboardScreen.Notifications },
                 onNavigateToProfile = { currentScreen = DashboardScreen.Profile },
-                onNavigateToCameraLiveStream = { doorName -> 
-                    currentScreen = DashboardScreen.CameraLiveStream(doorName) 
+                onNavigateToCameraLiveStream = { doorId -> 
+                    currentScreen = DashboardScreen.CameraLiveStream(doorId) 
                 }
             )
         }
@@ -191,9 +191,9 @@ fun DashboardNavigation(
             )
         }
         is DashboardScreen.CameraLiveStream -> {
-            val doorName = (currentScreen as DashboardScreen.CameraLiveStream).doorName
+            val doorId = (currentScreen as DashboardScreen.CameraLiveStream).doorId
             CameraLiveStreamScreen(
-                doorName = doorName,
+                doorId = doorId,
                 onBackClick = { currentScreen = DashboardScreen.Home }
             )
         }

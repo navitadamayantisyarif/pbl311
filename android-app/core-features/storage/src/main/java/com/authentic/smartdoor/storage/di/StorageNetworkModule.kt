@@ -12,6 +12,7 @@ import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
 import com.authentic.smartdoor.storage.remote.api.AuthApiService
 import com.authentic.smartdoor.storage.remote.api.DashboardApiService
+import com.authentic.smartdoor.storage.remote.api.CameraApiService
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -46,6 +47,10 @@ object StorageNetworkModule {
     @Provides
     @Singleton
     fun provideDashboardApiService(retrofit: Retrofit): DashboardApiService = retrofit.create(DashboardApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCameraApiService(retrofit: Retrofit): CameraApiService = retrofit.create(CameraApiService::class.java)
 }
 
 

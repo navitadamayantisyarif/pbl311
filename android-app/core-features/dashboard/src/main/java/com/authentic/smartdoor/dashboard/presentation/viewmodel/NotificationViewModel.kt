@@ -1,4 +1,4 @@
-package com.authentic.smartdoor.dashboard.ui.viewmodel
+package com.authentic.smartdoor.dashboard.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

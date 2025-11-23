@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: securedoor
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - securedoor_network
+
+  mock_api:
+    image: node:20
+    container_name: backend_mock
+    working_dir: /usr/src/app
+    volumes:
+      - ./backend/mock-api:/usr/src/app
+    command: ["sh", "-c", "npm install && npm run dev"]
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/securedoor
+    depends_on:
+      - postgres
+    networks:
+      - securedoor_network
+
+  prod_api:
+    image: node:20
+    container_name: backend_prod
+    working_dir: /usr/src/app
+    volumes:
+      - ./backend/production-api:/usr/src/app
+    command: ["sh", "-c", "npm install && npm run dev"]
+    ports:
+      - "5002:5002"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/securedoor
+    depends_on:
+      - postgres
+    networks:
+      - securedoor_network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./web-admin/build:/usr/share/nginx/html
+    depends_on:
+      - mock_api
+      - prod_api
+    networks:
+      - securedoor_network
+
+networks:
+  securedoor_network:
+
+volumes:
+  pgdata:

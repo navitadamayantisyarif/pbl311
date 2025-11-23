@@ -139,3 +139,16 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 .claude
+
+# Docker image exports
+*.tar
+
+# Node modules
+node_modules/
+
+# Build folders
+dist/
+build/
+
+# Logs
+*.log
