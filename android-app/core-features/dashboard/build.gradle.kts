@@ -46,6 +46,7 @@ dependencies {
 
     // Authentication and Storage module dependencies
     implementation(project(":storage"))
+    implementation(project(":camera"))
 
     // Room provided by storage module
 

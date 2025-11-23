@@ -41,7 +41,7 @@ import com.authentic.smartdoor.camera.presentation.viewmodel.CameraViewModel
 
 @Composable
 fun CameraLiveStreamScreen(
-    doorId: Int,
+    doorId: String,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -118,7 +118,7 @@ fun CameraLiveStreamScreen(
 
 @Composable
 private fun CameraTopBar(
-    doorId: Int,
+    doorId: String,
     onBackClick: () -> Unit
 ) {
     Card(

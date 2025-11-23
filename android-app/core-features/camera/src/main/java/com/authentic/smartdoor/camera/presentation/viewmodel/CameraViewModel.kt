@@ -24,13 +24,27 @@ class CameraViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CameraUiState(isLoading = false))
     val uiState: StateFlow<CameraUiState> = _uiState
 
+    fun loadStream(doorId: String) {
+        val idInt = doorId.toIntOrNull()
+        if (idInt == null) {
+            _uiState.value = CameraUiState(
+                isLoading = false,
+                doorId = null,
+                streamUrl = null,
+                errorMessage = "ID pintu tidak valid"
+            )
+            return
+        }
+        loadStream(idInt)
+    }
+
     fun loadStream(doorId: Int) {
         _uiState.value = CameraUiState(isLoading = true, doorId = doorId)
         viewModelScope.launch {
             try {
                 val res = remote.getCameraStream(doorId)
                 if (res.success && res.data != null) {
-                    val data = res.data
+                    val data = res.data!!
                     _uiState.value = CameraUiState(
                         isLoading = false,
                         doorId = doorId,

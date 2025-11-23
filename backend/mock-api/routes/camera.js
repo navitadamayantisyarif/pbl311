@@ -24,8 +24,8 @@ router.get('/stream', async (req, res) => {
     const resolvedDoorId = parseInt(door_id, 10);
 
     // Ambil konfigurasi IP/HOST dan PORT WebRTC dari environment
-    const webrtcHost = process.env.CAMERA_WEBRTC_IP || process.env.CAMERA_WEBRTC_HOST || '127.0.0.1';
-    const webrtcPort = process.env.CAMERA_WEBRTC_PORT || '8080';
+    const webrtcHost = process.env.CAMERA_WEBRTC_IP || process.env.CAMERA_WEBRTC_HOST || '172.27.3.163';
+    const webrtcPort = process.env.CAMERA_WEBRTC_PORT || '8889';
 
     // WebRTC URL: http://ip:port/door_id
     const webrtcUrl = `http://${webrtcHost}:${webrtcPort}/${resolvedDoorId}`;

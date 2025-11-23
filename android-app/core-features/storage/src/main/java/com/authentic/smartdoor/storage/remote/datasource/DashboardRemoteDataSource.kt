@@ -94,37 +94,6 @@ class DashboardRemoteDataSource @Inject constructor(
         return CameraStreamResponse(false, null, response.errorBody()?.string())
     }
 
-    suspend fun capturePhoto(doorId: Int): CameraCaptureCreateResponse {
-        val response = api.capturePhoto(bearer(), CameraCaptureRequest(door_id = doorId))
-        if (response.isSuccessful) {
-            return response.body() ?: CameraCaptureCreateResponse(false, null, "Empty body")
-        }
-        return CameraCaptureCreateResponse(false, null, response.errorBody()?.string())
-    }
-
-    suspend fun getCameraCaptureById(id: Int): CameraCaptureDetailResponse {
-        val response = api.getCameraCaptureById(bearer(), id)
-        if (response.isSuccessful) {
-            return response.body() ?: CameraCaptureDetailResponse(false, null, "Empty body")
-        }
-        return CameraCaptureDetailResponse(false, null, response.errorBody()?.string())
-    }
-
-    suspend fun getPhotoHistory(
-        limit: Int? = null,
-        offset: Int? = null,
-        doorId: Int? = null,
-        startDate: String? = null,
-        endDate: String? = null,
-        eventType: String? = null
-    ): CameraCaptureListResponse {
-        val response = api.getPhotoHistory(bearer(), limit, offset, doorId, startDate, endDate, eventType)
-        if (response.isSuccessful) {
-            return response.body() ?: CameraCaptureListResponse(false, emptyList(), "Empty body")
-        }
-        return CameraCaptureListResponse(false, emptyList(), response.errorBody()?.string())
-    }
-
     suspend fun logout(): Boolean {
         val response = api.logout(bearer())
         return response.isSuccessful
