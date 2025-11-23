@@ -29,8 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.authentic.smartdoor.dashboard.domain.model.NotificationModel
 import com.authentic.smartdoor.dashboard.domain.model.toNotificationModel
-import com.authentic.smartdoor.dashboard.domain.model.Notification
-import com.authentic.smartdoor.dashboard.ui.viewmodel.NotificationViewModel
+import com.authentic.smartdoor.dashboard.presentation.viewmodel.NotificationViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

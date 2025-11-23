@@ -303,7 +303,7 @@ Authorization: Bearer <jwt_token>
 ## 📷 Camera
 
 ### GET /api/camera/stream
-Mendapatkan URL stream kamera untuk pintu tertentu.
+Mendapatkan URL WebRTC kamera berdasarkan `door_id`.
 
 **Headers:**
 ```
@@ -321,7 +321,7 @@ Authorization: Bearer <jwt_token>
   "success": true,
   "data": {
     "door_id": 1,
-    "stream_url": "rtsp://mock-camera-server.com/stream/1",
+    "webrtc_url": "http://127.0.0.1:8080/1",
     "status": "active",
     "resolution": "1920x1080",
     "fps": 30,
@@ -332,7 +332,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### POST /api/camera/capture
-Mengambil foto dari kamera pintu.
+Mengambil foto dari kamera pintu menggunakan `door_id`.
 
 **Headers:**
 ```

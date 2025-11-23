@@ -66,30 +66,6 @@ interface DashboardApiService {
         @Query("door_id") doorId: Int
     ): Response<CameraStreamResponse>
 
-    @POST("camera/capture")
-    suspend fun capturePhoto(
-        @Header("Authorization") token: String,
-        @Body request: CameraCaptureRequest
-    ): Response<CameraCaptureCreateResponse>
-
-    @GET("camera/capture/{id}")
-    suspend fun getCameraCaptureById(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<CameraCaptureDetailResponse>
-
-    // History photos endpoint
-    @GET("history/photos")
-    suspend fun getPhotoHistory(
-        @Header("Authorization") token: String,
-        @Query("limit") limit: Int? = null,
-        @Query("offset") offset: Int? = null,
-        @Query("door_id") doorId: Int? = null,
-        @Query("start_date") startDate: String? = null,
-        @Query("end_date") endDate: String? = null,
-        @Query("event_type") eventType: String? = null
-    ): Response<CameraCaptureListResponse>
-
     // Analytics endpoints
     @GET("analytics/dashboard")
     suspend fun getAnalyticsDashboard(

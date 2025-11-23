@@ -50,17 +50,18 @@ data class AccessLogDto(
     val camera_capture: CameraCaptureDto? = null
 )
 
+data class AccessLogResponse(
+    val success: Boolean,
+    val data: List<AccessLogDto>?,
+    val message: String?
+)
+
+// Minimal camera capture summary used inside access logs
 data class CameraCaptureDto(
     val id: Int,
     val filename: String,
     val event_type: String,
     val timestamp: String
-)
-
-data class AccessLogResponse(
-    val success: Boolean,
-    val data: List<AccessLogDto>?,
-    val message: String?
 )
 
 data class MarkReadRequest(
@@ -78,101 +79,12 @@ data class DoorControlResponse(
     val data: DoorControlData?
 )
 
+
 data class DoorControlData(
     val action: String,
     val success: Boolean,
     val timestamp: String,
     val door_id: Int?
-)
-
-// Camera stream
-data class CameraStreamResponse(
-    val success: Boolean,
-    val data: CameraStreamDto?,
-    val message: String?
-)
-
-data class CameraStreamDto(
-    val door_id: Int,
-    val stream_url: String,
-    val status: String,
-    val resolution: String,
-    val fps: Int,
-    val timestamp: String
-)
-
-// Camera capture create
-data class CameraCaptureRequest(
-    val door_id: Int,
-    val trigger_type: String = "manual"
-)
-
-data class CameraCaptureCreateResponse(
-    val success: Boolean,
-    val data: CameraCaptureCreateDto?,
-    val message: String?
-)
-
-data class CameraCaptureCreateDto(
-    val id: String,
-    val door_id: Int,
-    val trigger_type: String,
-    val image_url: String,
-    val thumbnail_url: String,
-    val timestamp: String,
-    val confidence_score: Double,
-    val location: String
-)
-
-// Camera capture detail
-data class CameraCaptureDetailResponse(
-    val success: Boolean,
-    val data: CameraCaptureDetailDto?,
-    val message: String?
-)
-
-data class CameraCaptureDetailDto(
-    val id: Int,
-    val door_id: Int,
-    val filename: String,
-    val timestamp: String,
-    val event_type: String,
-    val file_size: Int,
-    val image_url: String,
-    val thumbnail_url: String,
-    val door: DoorSummaryDto?
-)
-
-data class DoorSummaryDto(
-    val id: Int,
-    val name: String,
-    val location: String,
-    val locked: Boolean,
-    val battery_level: Int,
-    val camera_active: Boolean
-)
-
-// Camera capture list (history/photos)
-data class CameraCaptureListResponse(
-    val success: Boolean,
-    val data: List<CameraCaptureListItemDto>?,
-    val message: String?
-)
-
-data class CameraCaptureListItemDto(
-    val id: Int,
-    val door_id: Int,
-    val filename: String,
-    val timestamp: String,
-    val event_type: String,
-    val file_size: Int,
-    val door: DoorSummaryMiniDto?
-)
-
-data class DoorSummaryMiniDto(
-    val id: Int,
-    val name: String,
-    val location: String
 )
 
 data class UserProfileResponse(
