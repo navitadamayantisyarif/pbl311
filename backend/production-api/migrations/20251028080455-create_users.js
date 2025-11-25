@@ -28,7 +28,7 @@ module.exports = {
         defaultValue: 'user'
       },
       face_data: {
-        type: Sequelize.TEXT,
+        type: Sequelize.BLOB,
         allowNull: true
       },
       avatar: {

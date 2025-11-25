@@ -118,17 +118,26 @@ async function controlDoor(req, res, next) {
       });
     }
 
-    // Update door status
     const shouldLock = internalAction === 'kunci';
     const timestamp = new Date();
 
-    await door.update({
-      locked: shouldLock,
-      last_update: timestamp
-    });
+    await db.sequelize.transaction(async (t) => {
+      await db.sequelize.query(
+        "SELECT set_config('app.trusted_caller', '1', true)",
+        { transaction: t }
+      );
 
-    // Log the action
-    try {
+      const doorForUpdate = await db.DoorStatus.findOne({
+        where: { id: doorIdInt },
+        transaction: t,
+        lock: t.LOCK.UPDATE
+      });
+
+      await doorForUpdate.update({
+        locked: shouldLock,
+        last_update: timestamp
+      }, { transaction: t });
+
       await db.AccessLog.create({
         user_id: userId,
         door_id: doorIdInt,
@@ -137,13 +146,10 @@ async function controlDoor(req, res, next) {
         method: 'POST',
         timestamp: timestamp,
         ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log door control action:', logError);
-      // Don't fail the request if logging fails
-    }
+      }, { transaction: t });
+    });
 
-    // Return response
+    const updatedDoor = await db.DoorStatus.findByPk(doorIdInt);
     res.json({
       success: true,
       data: {
@@ -153,8 +159,8 @@ async function controlDoor(req, res, next) {
         timestamp: timestamp,
         message: `Door ${internalAction === 'buka' ? 'opened' : 'locked'} successfully`,
         door_status: {
-          locked: door.locked,
-          last_update: door.last_update
+          locked: updatedDoor.locked,
+          last_update: updatedDoor.last_update
         }
       },
       message: `Door ${internalAction === 'buka' ? 'opened' : 'locked'} successfully`
@@ -264,9 +270,45 @@ async function updateDoorSettings(req, res, next) {
   }
 }
 
+async function getDoorDeviceStatus(req, res, next) {
+  try {
+    const doorId = parseInt(req.params.door_id);
+    if (!doorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid door ID',
+        code: 'INVALID_DOOR_ID'
+      });
+    }
+    const door = await db.DoorStatus.findByPk(doorId);
+    if (!door) {
+      return res.status(404).json({
+        success: false,
+        error: 'Door not found',
+        code: 'DOOR_NOT_FOUND'
+      });
+    }
+    res.json({
+      success: true,
+      data: {
+        door_id: door.id,
+        status: door.locked ? 'terkunci' : 'terbuka',
+        locked: door.locked,
+        battery_level: door.battery_level,
+        last_update: door.last_update
+      },
+      message: 'Door status retrieved successfully'
+    });
+  } catch (error) {
+    logger.error('Get door device status error:', error);
+    next(error);
+  }
+}
+
 module.exports = {
   getDoorStatus,
   controlDoor,
-  updateDoorSettings
+  updateDoorSettings,
+  getDoorDeviceStatus
 };
 

@@ -63,13 +63,13 @@ async function getCameraStream(req, res, next) {
     }
 
     // Generate stream URL (in production, this would come from camera management system)
-    const streamUrl = process.env.CAMERA_STREAM_BASE_URL 
-      ? `${process.env.CAMERA_STREAM_BASE_URL}/stream/${doorId}`
-      : `rtsp://camera-server.example.com/stream/${doorId}`;
+    const webrtcHost = process.env.CAMERA_WEBRTC_IP || process.env.CAMERA_WEBRTC_HOST || '172.27.3.163';
+    const webrtcPort = process.env.CAMERA_WEBRTC_PORT || '8889';
+    const streamUrl = `http://${webrtcHost}:${webrtcPort}/${doorId}`;
 
     const streamData = {
       door_id: doorId,
-      stream_url: streamUrl,
+      webrtc_url: streamUrl,
       status: door.camera_active ? 'active' : 'inactive',
       resolution: '1920x1080', // Could be stored in door settings or camera config
       fps: 30,
@@ -171,20 +171,6 @@ async function capturePhoto(req, res, next) {
       file_size: fileSize
     });
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: userId,
-        door_id: doorId,
-        action: 'camera_capture',
-        success: true,
-        method: 'POST',
-        timestamp: timestamp,
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log camera capture:', logError);
-    }
 
     // Return capture data
     const captureData = {
@@ -402,19 +388,6 @@ async function deleteRecording(req, res, next) {
     // Delete from database
     await recording.destroy();
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: userId,
-        door_id: recording.door_id,
-        action: 'delete_camera_recording',
-        success: true,
-        method: 'DELETE',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log recording deletion:', logError);
-    }
 
     res.json({
       success: true,
@@ -427,10 +400,57 @@ async function deleteRecording(req, res, next) {
   }
 }
 
+async function getCaptureById(req, res, next) {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Capture ID is required',
+        code: 'MISSING_CAPTURE_ID'
+      });
+    }
+    const record = await db.CameraRecord.findByPk(id, {
+      include: [{ model: db.DoorStatus, as: 'door', attributes: ['id','name','location','locked','battery_level','camera_active'] }]
+    });
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        error: 'Camera capture not found',
+        code: 'CAPTURE_NOT_FOUND'
+      });
+    }
+    const imageBaseUrl = process.env.IMAGE_BASE_URL || 'https://camera-storage.example.com';
+    const data = {
+      id: record.id,
+      door_id: record.door_id,
+      trigger_type: record.event_type,
+      image_url: `${imageBaseUrl}/images/${record.filename}`,
+      thumbnail_url: `${imageBaseUrl}/thumbnails/${record.filename}`,
+      timestamp: record.timestamp,
+      confidence_score: 0.85,
+      location: record.door ? record.door.location : null,
+      door: record.door ? {
+        id: record.door.id,
+        name: record.door.name,
+        location: record.door.location,
+        locked: record.door.locked,
+        battery_level: record.door.battery_level,
+        camera_active: record.door.camera_active
+      } : null
+    };
+    res.json({ success: true, data, message: 'Camera capture retrieved successfully' });
+  } catch (error) {
+    logger.error('Get camera capture error:', error);
+    next(error);
+  }
+}
+
 module.exports = {
   getCameraStream,
   capturePhoto,
   getRecordings,
-  deleteRecording
+  deleteRecording,
+  getCaptureById
 };
 

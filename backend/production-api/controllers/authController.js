@@ -75,36 +75,28 @@ async function googleSignIn(req, res, next) {
       email: user.email,
       role: user.role
     });
-
-    // Log access attempt
     try {
-      await db.AccessLog.create({
-        user_id: user.id,
-        action: 'google_signin',
-        success: true,
-        method: 'POST',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log access:', logError);
-      // Don't fail the request if logging fails
-    }
+      const { generateTokenHash } = require('../utils/jwt');
+      const hash = generateTokenHash(tokens.refresh_token);
+      await user.update({ refresh_token_hash: hash });
+    } catch (e) {}
 
-    // Return response sesuai dokumentasi: { token: string, user: User, expires_in: number }
     res.status(isNewUser ? 201 : 200).json({
-      token: tokens.access_token,
-      user: {
-        id: user.id,
-        google_id: user.google_id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-        face_data: user.face_data ? true : false,
-        face_registered: !!user.face_data,
-        created_at: user.created_at
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          google_id: user.google_id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatar: user.avatar,
+          face_registered: !!user.face_data,
+          created_at: user.created_at
+        },
+        tokens: tokens
       },
-      expires_in: tokens.expires_in
+      message: 'Authentication successful'
     });
 
   } catch (error) {
@@ -160,18 +152,16 @@ async function refreshToken(req, res, next) {
       email: user.email,
       role: user.role
     });
-
-    // Log token refresh
     try {
-      await db.AccessLog.create({
-        user_id: user.id,
-        action: 'token_refresh',
-        success: true,
-        method: 'POST',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log access:', logError);
+      const { generateTokenHash } = require('../utils/jwt');
+      const incomingHash = generateTokenHash(refresh_token);
+      if (user.refresh_token_hash && user.refresh_token_hash !== incomingHash) {
+        return res.status(401).json({ success: false, error: 'Invalid refresh token', code: 'INVALID_TOKEN' });
+      }
+      const newHash = generateTokenHash(tokens.refresh_token);
+      await user.update({ refresh_token_hash: newHash });
+    } catch (e) {
+      // tolerate missing column
     }
 
     res.json({
@@ -220,20 +210,6 @@ async function logout(req, res, next) {
       logger.debug('No valid token for logout:', tokenError.message);
     }
 
-    // Log logout action
-    if (userId) {
-      try {
-        await db.AccessLog.create({
-          user_id: userId,
-          action: 'logout',
-          success: true,
-          method: 'POST',
-          ip_address: req.ip || req.connection.remoteAddress
-        });
-      } catch (logError) {
-        logger.error('Failed to log logout:', logError);
-      }
-    }
 
     // In a full implementation, you might want to:
     // 1. Store refresh tokens in database and blacklist them

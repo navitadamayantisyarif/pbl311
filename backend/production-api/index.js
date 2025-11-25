@@ -6,6 +6,10 @@ const { Pool } = require('pg')
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
+const http = require('http');
+const { Server } = require('socket.io');
+const https = require('https');
+const fs = require('fs');
 const logger = require('./utils/logger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { generalRateLimiter } = require('./middleware/rateLimiter');
@@ -15,9 +19,24 @@ const authRoutes = require('./routes/auth');
 const doorRoutes = require('./routes/door');
 const userRoutes = require('./routes/users');
 const cameraRoutes = require('./routes/camera');
+const analyticsRoutes = require('./routes/analytics');
+const historyRoutes = require('./routes/history');
+const notificationRoutes = require('./routes/notifications');
 
 // Initialize Express app
 const app = express();
+let server;
+const keyPath = process.env.SSL_KEY_PATH;
+const certPath = process.env.SSL_CERT_PATH;
+if (keyPath && certPath && fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  const credentials = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
+  server = https.createServer(credentials, app);
+} else {
+  server = http.createServer(app);
+}
 
 // Trust proxy (important for correct IP addresses behind reverse proxy)
 app.set('trust proxy', true);
@@ -50,9 +69,25 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Database pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+const dbConfig = (() => {
+  if (process.env.DATABASE_URL) {
+    const useSsl = process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production';
+    return {
+      connectionString: process.env.DATABASE_URL,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined
+    };
+  }
+  return {
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    database: process.env.DB_NAME || 'securedoor',
+    user: process.env.DB_USERNAME || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
+  };
+})();
+
+const pool = new Pool(dbConfig);
 
 // Health check endpoint (server + DB)
 app.get('/api/health', async (req, res) => {
@@ -82,6 +117,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/door', doorRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/camera', cameraRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/history', historyRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -94,7 +132,32 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Start server
-const server = app.listen(PORT, HOST, () => {
+const io = new Server(server, {
+  cors: {
+    origin: corsOptions.origin,
+    methods: ['GET', 'POST']
+  }
+});
+
+io.on('connection', (socket) => {
+  socket.emit('door-status', {
+    locked: true,
+    battery_level: Math.floor(Math.random() * 100),
+    last_update: new Date().toISOString(),
+    camera_active: true
+  });
+});
+
+setInterval(() => {
+  io.emit('door-status', {
+    locked: Math.random() > 0.5,
+    battery_level: Math.floor(Math.random() * 100),
+    last_update: new Date().toISOString(),
+    camera_active: Math.random() > 0.3
+  });
+}, 30000);
+
+server.listen(PORT, HOST, () => {
   logger.info(`Server is running on http://${HOST}:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
