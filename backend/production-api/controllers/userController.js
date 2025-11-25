@@ -90,18 +90,6 @@ async function createUser(req, res, next) {
       face_data: null
     });
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: req.user.userId,
-        action: 'create_user',
-        success: true,
-        method: 'POST',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log user creation:', logError);
-    }
 
     const userData = user.toJSON();
     res.status(201).json({
@@ -190,18 +178,6 @@ async function updateUser(req, res, next) {
     // Update user
     await user.update(updateData);
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: currentUserId,
-        action: 'update_user',
-        success: true,
-        method: 'PUT',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log user update:', logError);
-    }
 
     const userData = user.toJSON();
     res.json({
@@ -261,18 +237,6 @@ async function deleteUser(req, res, next) {
     // Delete user (cascade will handle related records via foreign keys)
     await user.destroy();
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: currentUserId,
-        action: 'delete_user',
-        success: true,
-        method: 'DELETE',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log user deletion:', logError);
-    }
 
     res.json({
       success: true,
@@ -341,18 +305,6 @@ async function registerFace(req, res, next) {
       face_data: face_data
     });
 
-    // Log the action
-    try {
-      await db.AccessLog.create({
-        user_id: currentUserId,
-        action: 'face_register',
-        success: true,
-        method: 'POST',
-        ip_address: req.ip || req.connection.remoteAddress
-      });
-    } catch (logError) {
-      logger.error('Failed to log face registration:', logError);
-    }
 
     const userData = user.toJSON();
     res.json({
@@ -373,11 +325,40 @@ async function registerFace(req, res, next) {
   }
 }
 
+async function getProfile(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found', code: 'USER_NOT_FOUND' });
+    }
+    const userData = user.toJSON();
+    res.json({
+      success: true,
+      data: {
+        id: userData.id,
+        google_id: userData.google_id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        avatar: userData.avatar,
+        face_registered: !!userData.face_data,
+        created_at: userData.created_at
+      },
+      message: 'User profile retrieved successfully'
+    });
+  } catch (error) {
+    logger.error('Get user profile error:', error);
+    next(error);
+  }
+}
+
 module.exports = {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
-  registerFace
+  registerFace,
+  getProfile
 };
 

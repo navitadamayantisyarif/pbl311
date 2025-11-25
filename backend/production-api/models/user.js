@@ -57,11 +57,15 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     face_data: {
-      type: DataTypes.TEXT,
+      type: DataTypes.BLOB,
       allowNull: true
     },
     avatar: {
       type: DataTypes.STRING,
+      allowNull: true
+    },
+    refresh_token_hash: {
+      type: DataTypes.STRING(255),
       allowNull: true
     }
   }, {

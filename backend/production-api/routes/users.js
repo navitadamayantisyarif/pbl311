@@ -16,6 +16,11 @@ router.get('/',
   userController.getUsers
 );
 
+router.get('/profile',
+  authenticateToken,
+  userController.getProfile
+);
+
 /**
  * @route   POST /api/users
  * @desc    Create new user (admin only)

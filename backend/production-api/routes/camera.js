@@ -28,6 +28,11 @@ router.post('/capture',
   cameraController.capturePhoto
 );
 
+router.get('/capture/:id',
+  authenticateToken,
+  cameraController.getCaptureById
+);
+
 /**
  * @route   GET /api/camera/recordings
  * @desc    Get list of camera recordings

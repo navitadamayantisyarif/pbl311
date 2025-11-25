@@ -10,8 +10,21 @@ const config = require(__dirname + '/../config/config.json')[env];
 const db = {};
 
 let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+const useEnv = (process.env.DB_HOST || process.env.DB_NAME || process.env.DB_USERNAME);
+if (useEnv) {
+  const dialectOptions = process.env.DB_SSL === 'true' ? { ssl: { require: true, rejectUnauthorized: false } } : undefined;
+  sequelize = new Sequelize(
+    process.env.DB_NAME || config.database,
+    process.env.DB_USERNAME || config.username,
+    process.env.DB_PASSWORD || config.password,
+    {
+      host: process.env.DB_HOST || config.host || '127.0.0.1',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      dialect: 'postgres',
+      logging: config.logging,
+      dialectOptions
+    }
+  );
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
