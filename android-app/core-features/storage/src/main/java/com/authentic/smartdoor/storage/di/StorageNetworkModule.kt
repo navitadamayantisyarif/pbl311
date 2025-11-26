@@ -13,6 +13,10 @@ import java.util.concurrent.TimeUnit
 import com.authentic.smartdoor.storage.remote.api.AuthApiService
 import com.authentic.smartdoor.storage.remote.api.DashboardApiService
 import com.authentic.smartdoor.storage.remote.api.CameraApiService
+import com.authentic.smartdoor.storage.network.TokenRefreshInterceptor
+import com.authentic.smartdoor.storage.network.TokenAuthenticator
+import com.authentic.smartdoor.storage.preferences.PreferencesManager
+import javax.inject.Named
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -20,7 +24,8 @@ object StorageNetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    @Named("baseClient")
+    fun provideBaseOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
@@ -30,11 +35,41 @@ object StorageNetworkModule {
             .build()
     }
 
+    @Named("mainClient")
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideOkHttpClient(
+        tokenRefreshInterceptor: TokenRefreshInterceptor,
+        tokenAuthenticator: TokenAuthenticator
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+            .addInterceptor(tokenRefreshInterceptor)
+            .authenticator(tokenAuthenticator)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("authRetrofit")
+    fun provideAuthRetrofit(@Named("baseClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://pbl311-production.up.railway.app/mock/")
+            .baseUrl("http://192.168.122.163:5002/api/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Named("mainRetrofit")
+    @Provides
+    @Singleton
+    fun provideRetrofit(@Named("mainClient") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("http://192.168.122.163:5002/api/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -42,15 +77,38 @@ object StorageNetworkModule {
 
     @Provides
     @Singleton
-    fun provideAuthApiService(retrofit: Retrofit): AuthApiService = retrofit.create(AuthApiService::class.java)
+    @Named("authApi")
+    fun provideAuthApiService(@Named("authRetrofit") retrofit: Retrofit): AuthApiService = retrofit.create(AuthApiService::class.java)
 
     @Provides
     @Singleton
-    fun provideDashboardApiService(retrofit: Retrofit): DashboardApiService = retrofit.create(DashboardApiService::class.java)
+    fun provideAuthApiServiceDefault(@Named("mainRetrofit") retrofit: Retrofit): AuthApiService = retrofit.create(AuthApiService::class.java)
 
     @Provides
     @Singleton
-    fun provideCameraApiService(retrofit: Retrofit): CameraApiService = retrofit.create(CameraApiService::class.java)
+    fun provideDashboardApiService(@Named("mainRetrofit") retrofit: Retrofit): DashboardApiService = retrofit.create(DashboardApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCameraApiService(@Named("mainRetrofit") retrofit: Retrofit): CameraApiService = retrofit.create(CameraApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideTokenRefreshInterceptor(
+        preferencesManager: PreferencesManager,
+        @Named("authApi") authApi: AuthApiService
+    ): TokenRefreshInterceptor {
+        return TokenRefreshInterceptor(preferencesManager, authApi)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTokenAuthenticator(
+        preferencesManager: PreferencesManager,
+        @Named("authApi") authApi: AuthApiService
+    ): TokenAuthenticator {
+        return TokenAuthenticator(preferencesManager, authApi)
+    }
 }
 
 

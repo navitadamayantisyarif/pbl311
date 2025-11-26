@@ -237,6 +237,13 @@ class DashboardRepositoryImpl @Inject constructor(
             )
         }
     }
+
+    override suspend fun getCameraStreamUrl(doorId: Int): Result<String?> {
+        return runCatching {
+            val res = remote.getCameraStream(doorId)
+            res.data?.stream_url
+        }
+    }
 }
 
 class DoorEntityToDomainMapper @Inject constructor() {

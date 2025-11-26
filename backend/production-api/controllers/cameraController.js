@@ -62,14 +62,13 @@ async function getCameraStream(req, res, next) {
       });
     }
 
-    // Generate stream URL (in production, this would come from camera management system)
-    const webrtcHost = process.env.CAMERA_WEBRTC_IP || process.env.CAMERA_WEBRTC_HOST || '172.27.3.163';
-    const webrtcPort = process.env.CAMERA_WEBRTC_PORT || '8889';
-    const streamUrl = `http://${webrtcHost}:${webrtcPort}/${doorId}`;
+    const rtspHost = process.env.CAMERA_RTSP_IP || process.env.CAMERA_RTSP_HOST || '10.216.91.163';
+    const rtspPort = process.env.CAMERA_RTSP_PORT || '8554';
+    const streamUrl = `rtsp://${rtspHost}:${rtspPort}/${doorId}`;
 
     const streamData = {
       door_id: doorId,
-      webrtc_url: streamUrl,
+      rtsp_url: streamUrl,
       status: door.camera_active ? 'active' : 'inactive',
       resolution: '1920x1080', // Could be stored in door settings or camera config
       fps: 30,

@@ -19,6 +19,9 @@ interface DashboardRepository {
     
     // Analytics methods
     suspend fun getAnalyticsData(doorId: Int? = null, startDate: String? = null, endDate: String? = null): Result<AnalyticsData>
+
+    // Camera
+    suspend fun getCameraStreamUrl(doorId: Int): Result<String?>
 }
 
 

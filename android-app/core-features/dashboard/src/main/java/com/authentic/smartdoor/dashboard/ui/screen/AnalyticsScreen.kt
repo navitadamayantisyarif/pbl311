@@ -357,38 +357,7 @@ fun AnalyticsScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-
-            // Jam Aktif Section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.LockOpen,
-                    contentDescription = "Clock",
-                    tint = Color(0xFF6C63FF),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Jam Aktif",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A),
-                        fontSize = 18.sp
-                    )
-                )
-            }
-
             Spacer(Modifier.height(16.dp))
-
-            // Active Hours List
-            uiState.analyticsData?.let { data ->
-                ActiveHoursList(activeHours = data.activeHours)
-            }
-
-            Spacer(Modifier.height(20.dp))
             }
         }
 
@@ -398,7 +367,7 @@ fun AnalyticsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                contentAlignment = Alignment.BottomCenter
+                contentAlignment = Alignment.Center
             ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE60023)),
@@ -509,81 +478,6 @@ private fun TimePeriodTab(
             ),
             modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
         )
-    }
-}
-
-@Composable
-private fun ActiveHoursList(activeHours: List<com.authentic.smartdoor.dashboard.domain.model.ActiveHour>) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        activeHours.forEach { activeHour ->
-            ActiveHourItem(
-                timeRange = activeHour.timeRange,
-                count = activeHour.count,
-                progress = activeHour.progress.toFloat()
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActiveHourItem(
-    timeRange: String,
-    count: Int,
-    progress: Float
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = timeRange,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color(0xFF1A1A1A),
-                    fontSize = 14.sp
-                ),
-                modifier = Modifier.width(100.dp)
-            )
-            
-            Spacer(Modifier.width(16.dp))
-            
-            // Progress bar
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE0E0E0))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(progress)
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF6C63FF))
-                )
-            }
-            
-            Spacer(Modifier.width(16.dp))
-            
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color(0xFF1A1A1A),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-            )
-        }
     }
 }
 
