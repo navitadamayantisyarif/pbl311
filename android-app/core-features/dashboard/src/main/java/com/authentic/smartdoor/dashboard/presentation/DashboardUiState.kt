@@ -15,7 +15,8 @@ data class DashboardUiState(
     val recentAccessLogs: List<AccessLog> = emptyList(),
     val systemStatus: SystemStatus? = null,
     val unreadNotificationCount: Int = 0,
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+    val cameraPreviewUrls: Map<String, String> = emptyMap()
 )
 
 sealed class DashboardEvent {

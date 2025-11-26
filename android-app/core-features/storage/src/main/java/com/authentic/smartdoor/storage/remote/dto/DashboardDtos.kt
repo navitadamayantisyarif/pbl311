@@ -42,7 +42,7 @@ data class AccessLogDto(
     val action: String,
     val timestamp: String,
     val success: Boolean,
-    val method: String,
+    val method: String?,
     val ip_address: String,
     val camera_capture_id: Int?,
     val user: UserDto? = null,

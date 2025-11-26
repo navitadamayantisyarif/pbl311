@@ -233,7 +233,7 @@ private fun AccessHistoryCard(
             // Content
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Pintu ${accessLog.doorId}",
+                    text = accessLog.door?.name ?: "Pintu ${accessLog.doorId}",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1A1A1A),

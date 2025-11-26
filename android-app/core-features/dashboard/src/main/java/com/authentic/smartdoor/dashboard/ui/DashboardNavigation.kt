@@ -74,7 +74,7 @@ sealed class DashboardScreen {
     object Analytics : DashboardScreen()
     object Profile : DashboardScreen()
     object EditProfile : DashboardScreen()
-    data class CameraLiveStream(val doorId: String) : DashboardScreen()
+    data class CameraLiveStream(val doorId: String, val doorName: String) : DashboardScreen()
 }
 
 @Composable
@@ -93,8 +93,8 @@ fun DashboardNavigation(
                 onNavigateToAnalytics = { currentScreen = DashboardScreen.Analytics },
                 onNavigateToNotifications = { currentScreen = DashboardScreen.Notifications },
                 onNavigateToProfile = { currentScreen = DashboardScreen.Profile },
-                onNavigateToCameraLiveStream = { doorId -> 
-                    currentScreen = DashboardScreen.CameraLiveStream(doorId) 
+                onNavigateToCameraLiveStream = { doorId, doorName -> 
+                    currentScreen = DashboardScreen.CameraLiveStream(doorId, doorName) 
                 }
             )
         }
@@ -191,9 +191,10 @@ fun DashboardNavigation(
             )
         }
         is DashboardScreen.CameraLiveStream -> {
-            val doorId = (currentScreen as DashboardScreen.CameraLiveStream).doorId
+            val screen = currentScreen as DashboardScreen.CameraLiveStream
             CameraLiveStreamScreen(
-                doorId = doorId,
+                doorId = screen.doorId,
+                doorName = screen.doorName,
                 onBackClick = { currentScreen = DashboardScreen.Home }
             )
         }

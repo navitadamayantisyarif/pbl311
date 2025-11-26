@@ -1,5 +1,6 @@
 package com.authentic.smartdoor.dashboard.ui.screen
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -62,11 +63,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.ui.PlayerView
 import com.authentic.smartdoor.dashboard.presentation.DashboardEvent
 import com.authentic.smartdoor.dashboard.presentation.viewmodel.DashboardViewModel
 import com.authentic.smartdoor.dashboard.ui.components.BottomBar
@@ -81,7 +88,7 @@ fun DoorScreen(
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToCameraLiveStream: (String) -> Unit = {}
+    onNavigateToCameraLiveStream: (String, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = remember { mutableStateOf("") }
@@ -137,6 +144,7 @@ fun DoorScreen(
                     Spacer(Modifier.height(16.dp))
                     Header(
                         userName = uiState.user?.name ?: "Hafiz Atama",
+                        avatarUrl = uiState.user?.avatar,
                         unreadCount = uiState.unreadNotificationCount,
                         onProfileClick = onNavigateToProfile
                     )
@@ -160,8 +168,12 @@ fun DoorScreen(
                 }
 
                 items(filteredDoors) { door ->
+                    LaunchedEffect(door.id) {
+                        viewModel.loadCameraPreview(door.id)
+                    }
                     DoorCard(
                         door = door,
+                        previewUrl = uiState.cameraPreviewUrls[door.id],
                         onLockClick = {
                             selectedDoor = door
                             selectedAction = "kunci"
@@ -172,7 +184,7 @@ fun DoorScreen(
                             selectedAction = "buka"
                             showConfirmationModal = true
                         },
-                        onCameraClick = { onNavigateToCameraLiveStream(door.id) }
+                        onCameraClick = { onNavigateToCameraLiveStream(door.id, door.name) }
                         // onCameraClick = {
                         //     door.id.toIntOrNull()?.let { onNavigateToCameraLiveStream(it) }
                         // }
@@ -235,6 +247,7 @@ fun DoorScreen(
 @Composable
 private fun Header(
     userName: String,
+    avatarUrl: String?,
     unreadCount: Int,
     onProfileClick: () -> Unit = {}
 ) {
@@ -262,15 +275,64 @@ private fun Header(
             )
         }
 
-        IconButton(
-            onClick = onProfileClick,
+        Box(
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFE8E6FF))
         ) {
+            AvatarOrInitials(
+                avatarUrl = avatarUrl,
+                initials = userName.split(" ").take(2).joinToString("") { it.take(1).uppercase() },
+                onClick = onProfileClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun AvatarOrInitials(
+    avatarUrl: String?,
+    initials: String,
+    onClick: () -> Unit = {}
+) {
+    var imageBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    LaunchedEffect(avatarUrl) {
+        if (!avatarUrl.isNullOrBlank()) {
+            try {
+                val url = java.net.URL(avatarUrl)
+                val bmp = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val conn = url.openConnection()
+                    conn.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+                }
+                imageBitmap = bmp?.asImageBitmap()
+            } catch (_: Exception) {
+                imageBitmap = null
+            }
+        } else {
+            imageBitmap = null
+        }
+    }
+
+    if (imageBitmap != null) {
+        androidx.compose.foundation.Image(
+            bitmap = imageBitmap!!,
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFE8E6FF))
+                .padding(0.dp)
+        )
+        androidx.compose.material3.IconButton(onClick = onClick, modifier = Modifier.fillMaxSize()) { }
+    } else {
+        androidx.compose.material3.IconButton(
+            onClick = onClick,
+            modifier = Modifier.fillMaxSize()
+        ) {
             Text(
-                text = userName.split(" ").take(2).joinToString("") { it.take(1).uppercase() },
+                text = initials,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 color = Color(0xFF6C63FF)
@@ -316,6 +378,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun DoorCard(
     door: com.authentic.smartdoor.dashboard.domain.model.Door,
+    previewUrl: String?,
     onLockClick: () -> Unit,
     onUnlockClick: () -> Unit,
     onCameraClick: () -> Unit
@@ -386,39 +449,53 @@ private fun DoorCard(
 
             Spacer(Modifier.height(16.dp))
 
-            // Illustration area (placeholder)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE8DAFF)),
-                contentAlignment = Alignment.Center
+                    .background(Color(0xFFE8DAFF))
             ) {
-                // Placeholder for illustration
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = Color(0xFF6C63FF).copy(alpha = 0.3f)
-                )
-
-                // Fullscreen icon
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp)
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.9f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Fullscreen",
-                        tint = Color(0xFF1A1A1A),
-                        modifier = Modifier.size(16.dp)
+                if (!previewUrl.isNullOrBlank()) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val exoPlayer = remember(previewUrl) {
+                        ExoPlayer.Builder(context).build().apply {
+                            setMediaItem(MediaItem.fromUri(previewUrl))
+                            repeatMode = com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
+                            playWhenReady = true
+                            prepare()
+                        }
+                    }
+                    DisposableEffect(exoPlayer) {
+                        onDispose { exoPlayer.release() }
+                    }
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { ctx ->
+                            PlayerView(ctx).apply {
+                                player = exoPlayer
+                                keepScreenOn = false
+                                useController = false
+                                setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                layoutParams = android.view.ViewGroup.LayoutParams(
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                            }
+                        }
                     )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color(0xFF6C63FF).copy(alpha = 0.3f)
+                        )
+                    }
                 }
             }
 

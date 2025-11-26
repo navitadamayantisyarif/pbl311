@@ -180,4 +180,22 @@ class DashboardViewModel @Inject constructor(
     private fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
+
+    fun loadCameraPreview(doorId: String) {
+        viewModelScope.launch {
+            val id = doorId.toIntOrNull() ?: return@launch
+            dashboardRepository.getCameraStreamUrl(id)
+                .fold(
+                    onSuccess = { url ->
+                        if (url != null) {
+                            val current = _uiState.value.cameraPreviewUrls
+                            _uiState.value = _uiState.value.copy(
+                                cameraPreviewUrls = current + (doorId to url)
+                            )
+                        }
+                    },
+                    onFailure = { }
+                )
+        }
+    }
 }

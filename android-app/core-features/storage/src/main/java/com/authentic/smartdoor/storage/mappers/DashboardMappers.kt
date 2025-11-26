@@ -66,8 +66,22 @@ fun AccessLogDto.toEntity(): AccessLogEntity {
         action = action,
         timestamp = timestampMillis,
         success = success,
-        method = method,
+        method = method ?: "UNKNOWN",
         ipAddress = ip_address
+    )
+}
+
+fun AccessLogDto.toGenericAccessLog(): Nonuple<String, String, String, String, String, Boolean, String, String, String?> {
+    return Nonuple(
+        id.toString(),
+        user_id.toString(),
+        door_id.toString(),
+        action,
+        timestamp,
+        success,
+        method ?: "UNKNOWN",
+        ip_address,
+        camera_capture_id?.toString()
     )
 }
 
@@ -88,19 +102,6 @@ fun com.authentic.smartdoor.storage.remote.dto.AvailableDoorDto.toGenericAvailab
     return Triple(id, name, location)
 }
 
-fun com.authentic.smartdoor.storage.remote.dto.AccessLogDto.toGenericAccessLog(): Nonuple<String, String, String, String, String, Boolean, String, String, String?> {
-    return Nonuple(
-        id.toString(),
-        user_id.toString(),
-        door_id.toString(),
-        action,
-        timestamp,
-        success,
-        method,
-        ip_address,
-        camera_capture_id?.toString()
-    )
-}
 
 // Helper data class for 9-tuple
 data class Nonuple<A, B, C, D, E, F, G, H, I>(

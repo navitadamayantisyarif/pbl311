@@ -17,6 +17,11 @@ interface AuthApiService {
     suspend fun logout(
         @Header("Authorization") token: String
     ): Response<Map<String, Any>>
+
+    @POST("auth/refresh")
+    suspend fun refreshToken(
+        @Body request: RefreshTokenRequest
+    ): Response<RefreshTokenResponse>
 }
 
 
