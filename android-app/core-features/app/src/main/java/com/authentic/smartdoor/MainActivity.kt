@@ -1,3 +1,4 @@
+
     package com.authentic.smartdoor
 
     import android.content.Context
@@ -20,57 +21,51 @@
     import androidx.compose.foundation.layout.height
     import androidx.compose.foundation.layout.padding
     import androidx.compose.foundation.layout.size
+    import androidx.compose.foundation.layout.offset
     import androidx.compose.foundation.layout.width
-    import androidx.compose.foundation.shape.RoundedCornerShape
+    import androidx.compose.foundation.pager.HorizontalPager
+    import androidx.compose.foundation.pager.rememberPagerState
     import androidx.compose.foundation.shape.CircleShape
-    import androidx.compose.material3.Button
+    import androidx.compose.foundation.shape.RoundedCornerShape
+    import androidx.compose.material.icons.Icons
+    import androidx.compose.material.icons.filled.ArrowBack
+    import androidx.compose.material.icons.filled.ArrowForward
     import androidx.compose.material3.ButtonDefaults
+    import androidx.compose.material3.ElevatedButton
+    import androidx.compose.material3.Icon
+    import androidx.compose.material3.IconButton
     import androidx.compose.material3.MaterialTheme
     import androidx.compose.material3.Scaffold
     import androidx.compose.material3.Text
-    import androidx.compose.material3.Icon
-    import androidx.compose.material3.IconButton
     import androidx.compose.runtime.Composable
     import androidx.compose.runtime.LaunchedEffect
     import androidx.compose.runtime.getValue
     import androidx.compose.runtime.mutableStateOf
     import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
     import androidx.compose.runtime.setValue
     import androidx.compose.ui.Alignment
     import androidx.compose.ui.Modifier
     import androidx.compose.ui.draw.clip
+    import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.ColorFilter
     import androidx.compose.ui.layout.ContentScale
+    import androidx.compose.ui.platform.LocalContext
     import androidx.compose.ui.res.painterResource
+    import androidx.compose.ui.text.font.FontWeight
     import androidx.compose.ui.text.style.TextAlign
     import androidx.compose.ui.tooling.preview.Preview
     import androidx.compose.ui.unit.dp
-    import androidx.compose.foundation.layout.offset
-    import androidx.compose.foundation.layout.wrapContentWidth
-    import androidx.compose.ui.graphics.Color
-    import androidx.compose.ui.text.font.FontWeight
     import androidx.compose.ui.unit.sp
-    import androidx.compose.material3.ElevatedButton
-    import androidx.compose.material.icons.Icons
-    import androidx.compose.material.icons.filled.ArrowBack
-    import androidx.compose.material.icons.filled.ArrowForward
-    import androidx.compose.animation.core.tween
-    import androidx.compose.animation.slideInHorizontally
-    import androidx.compose.animation.slideOutHorizontally
-    import androidx.compose.animation.AnimatedContent
-    import androidx.compose.animation.ExperimentalAnimationApi
-    import androidx.compose.animation.fadeIn
-    import androidx.compose.animation.fadeOut
-    import androidx.compose.animation.with
-    import androidx.compose.ui.platform.LocalContext
-    import com.authentic.smartdoor.ui.theme.SecureDoorTheme
     import com.authentic.smartdoor.ui.theme.PurplePrimary
+    import com.authentic.smartdoor.ui.theme.SecureDoorTheme
     import com.authentic.smartdoor.ui.theme.abhayaLibre
     import com.authentic.smartdoor.ui.theme.jura
     import kotlinx.coroutines.delay
-    import kotlin.jvm.java
+    import kotlinx.coroutines.launch
 
     class MainActivity : ComponentActivity() {
-        
+
         private val authLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
@@ -81,16 +76,14 @@
                 finish()
             }
         }
-        
+
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
             enableEdgeToEdge()
             setContent {
                 SecureDoorTheme {
                     var showSplash by remember { mutableStateOf(true) }
-                    var showSmartUnlock by remember { mutableStateOf(false) }
-                    var showRealTimeAccess by remember { mutableStateOf(false) }
-                    var showHistoryAlert by remember { mutableStateOf(false)}
+                    var showOnboarding by remember { mutableStateOf(false) }
 
                     LaunchedEffect(Unit) {
                         delay(1800)
@@ -102,52 +95,20 @@
                             showSplash -> {
                                 SplashScreen(modifier = Modifier.padding(innerPadding))
                             }
-                            showHistoryAlert -> {
-                                HistoryAlertScreen(
-                                    modifier = Modifier.padding(innerPadding),
-                                    onBackClick = {
-                                        showHistoryAlert = false
-                                        showRealTimeAccess = true
-                                    },
-                                    onNextClick = { context ->
-                                        val intent = Intent(
-                                            context,
-                                            com.authentic.smartdoor.authentication.AuthenticationActivity::class.java
-                                        )
-                                        authLauncher.launch(intent)
-                                    }
-                                )
-                            }
-                            showRealTimeAccess -> {
-                                RealTimeAccessScreen(
-                                    modifier = Modifier.padding(innerPadding),
-                                    onBackClick = {
-                                        showRealTimeAccess = false
-                                        showSmartUnlock = true
-                                    },
-                                    onNextClick = {
-                                        showRealTimeAccess = false
-                                        showHistoryAlert = true
-                                    }
-                                )
-                            }
-                            showSmartUnlock -> {
-                                SmartUnlockScreen(
-                                    modifier = Modifier.padding(innerPadding),
-                                    onBackClick = {
-                                        showSmartUnlock = false
-                                    },
-                                    onNextClick = {
-                                        showSmartUnlock = false
-                                        showRealTimeAccess = true
-                                    }
-                                )
+                            showOnboarding -> {
+                                OnboardingCarousel(onFinished = { context ->
+                                    val intent = Intent(
+                                        context,
+                                        com.authentic.smartdoor.authentication.AuthenticationActivity::class.java
+                                    )
+                                    authLauncher.launch(intent)
+                                })
                             }
                             else -> {
                                 OnboardingScreen(
                                     modifier = Modifier.padding(innerPadding),
                                     onGetStartedClick = {
-                                        showSmartUnlock = true
+                                        showOnboarding = true
                                     }
                                 )
                             }
@@ -283,333 +244,185 @@
         }
     }
 
-    @Composable
-    fun SmartUnlockScreen(
-        modifier: Modifier = Modifier,
-        onBackClick: () -> Unit = {},
-        onNextClick: () -> Unit = {}
-    ) {
-        Box(modifier = modifier.fillMaxSize().background(Color.White)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Lock icon with purple gradient background
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.1f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.splash_image_2),
-                        contentDescription = "Smart Lock",
-                        modifier = Modifier.size(120.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Title
-                Text(
-                    text = "Smart Unlock",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 32.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Description
-                Text(
-                    text = "Buka pintu rumah atau kantor dengan\nsmart hanya melalui ponsel Anda.\nTanpa kunci fisik, lebih praktis dan modern.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-            }
-
-            // Navigation buttons at bottom
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 40.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Back button
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = PurplePrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Next button
-                IconButton(
-                    onClick = onNextClick,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary,
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Next",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
+    data class OnboardingPage(
+        val imageRes: Int,
+        val title: String,
+        val description: String
+    )
 
     @Composable
-    fun RealTimeAccessScreen(
-        modifier: Modifier = Modifier,
-        onBackClick: () -> Unit = {},
-        onNextClick: () -> Unit = {}
-    ) {
-        Box(modifier = modifier.fillMaxSize().background(Color.White)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Real-time access icon with purple gradient background
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.1f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.splash_image_3),
-                        contentDescription = "Real-Time Access",
-                        modifier = Modifier.size(120.dp)
-                    )
-                }
+    fun OnboardingCarousel(onFinished: (Context) -> Unit) {
+        val pages = listOf(
+            OnboardingPage(
+                imageRes = R.drawable.splash_image_2,
+                title = "Buka Kunci Cerdas",
+                description = "Buka pintu rumah atau kantor dengan aman hanya melalui ponsel Anda. Tanpa kunci fisik, lebih praktis dan modern."
+            ),
+            OnboardingPage(
+                imageRes = R.drawable.splash_image_3,
+                title = "Akses Waktu Nyata",
+                description = "Kontrol pintu secara langsung kapan saja. Lihat status terkini dan kelola akses dalam hitungan detik."
+            ),
+            OnboardingPage(
+                imageRes = R.drawable.splash_image_4,
+                title = "Riwayat & Peringatan",
+                description = "Pantau riwayat akses pintu dan terima notifikasi segera untuk setiap aktivitas, sukses maupun percobaan gagal."
+            )
+        )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Title
-                Text(
-                    text = "Real-Time Access",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 32.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Description
-                Text(
-                    text = "Kontrol pintu secara  langsung kapan saja. \n" +
-                            "Lihat status terkini dan kelola akses dalam hitungan detik.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-            }
-
-            // Navigation buttons at bottom
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 40.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Back button
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = PurplePrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Next button
-                IconButton(
-                    onClick = onNextClick,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary,
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Next",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun HistoryAlertScreen(
-        modifier: Modifier = Modifier,
-        onBackClick: () -> Unit = {},
-        onNextClick: (Context) -> Unit = {}
-    ) {
+        val pagerState = rememberPagerState(pageCount = { pages.size })
+        val scope = rememberCoroutineScope()
         val context = LocalContext.current
-        Box(modifier = modifier.fillMaxSize().background(Color.White)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Real-time access icon with purple gradient background
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.1f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.splash_image_4),
-                        contentDescription = "History & Alert",
-                        modifier = Modifier.size(120.dp)
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
 
-                // Title
-                Text(
-                    text = "History & Alert",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 32.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Description
-                Text(
-                    text = "Pantau riwayat akses pintu dan terima notifikasi segera \n" +
-                            "untuk setiap aktivitas, sukses maupun percobaan gagal.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = jura,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    ),
-                    color = Color.Black,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-            }
-
-            // Navigation buttons at bottom
-            Row(
+            // 🔵 CONTAINER UNGU dengan radius lebih besar
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 40.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxHeight(0.82f)
+                    .clip(RoundedCornerShape(topStart = 48.dp, topEnd = 48.dp)) // radius diperbesar
+                    .background(PurplePrimary)
             ) {
-                // Back button
-                IconButton(
-                    onClick = onBackClick,
+
+                // 🔵 SEGMENTED PAGE INDICATOR (di dalam container ungu)
+                Row(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        )
+                        .align(Alignment.TopCenter)
+                        .padding(top = 20.dp), // menempatkan indicator sedikit turun dari radius
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = PurplePrimary,
-                        modifier = Modifier.size(24.dp)
+                    repeat(pages.size) { index ->
+                        val active = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .clip(CircleShape)
+                                .background(if (active) Color.White else Color.White.copy(alpha = 0.4f))
+                                .height(6.dp)
+                                .width(if (active) 30.dp else 10.dp)
+                        )
+                    }
+                }
+
+                // 🔄 PAGER TETAP
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 60.dp) // agar content tidak menabrak indicator
+                ) { pageIndex ->
+                    OnboardingCarouselPage(
+                        pageData = pages[pageIndex],
+                        pageIndex = pageIndex
                     )
                 }
 
-                // Next button
-                IconButton(
-                    onClick = { onNextClick(context) },
+                // ⬅➡ BUTTON NAVIGATION
+                Row(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = PurplePrimary,
-                            shape = CircleShape
-                        )
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Next",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0))
+                            }
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            if (pagerState.currentPage < pages.size - 1) {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
+                            } else {
+                                onFinished(context)
+                            }
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Next",
+                            tint = PurplePrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
+        }
+    }
+
+
+
+    @Composable
+    fun OnboardingCarouselPage(pageData: OnboardingPage, pageIndex: Int) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            Image(
+                painter = painterResource(id = pageData.imageRes),
+                contentDescription = pageData.title,
+                modifier = Modifier.size(150.dp),
+                colorFilter = if (pageIndex < 2) ColorFilter.tint(Color.White) else null
+            )
+            Spacer(modifier = Modifier.height(40.dp))
+            Text(
+                text = pageData.title,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = jura,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 32.sp
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = pageData.description,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = jura,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                ),
+                color = Color.White.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
         }
     }
 
@@ -629,26 +442,10 @@
         }
     }
 
-    @Preview(showBackground = true, name = "Smart Unlock")
+    @Preview(showBackground = true, name = "Onboarding Carousel")
     @Composable
-    fun SmartUnlockPreview() {
+    fun OnboardingCarouselPreview() {
         SecureDoorTheme {
-            SmartUnlockScreen()
-        }
-    }
-
-    @Preview(showBackground = true, name = "Real-Time Access")
-    @Composable
-    fun RealTimeAccessPreview() {
-        SecureDoorTheme {
-            RealTimeAccessScreen()
-        }
-    }
-
-    @Preview(showBackground = true, name = "History & Alert")
-    @Composable
-    fun HistoryAlertPreview() {
-        SecureDoorTheme {
-            HistoryAlertScreen()
+            OnboardingCarousel(onFinished = {})
         }
     }
