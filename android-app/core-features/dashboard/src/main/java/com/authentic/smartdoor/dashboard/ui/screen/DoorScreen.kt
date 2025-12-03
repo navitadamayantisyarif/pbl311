@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Battery6Bar
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -185,9 +186,6 @@ fun DoorScreen(
                             showConfirmationModal = true
                         },
                         onCameraClick = { onNavigateToCameraLiveStream(door.id, door.name) }
-                        // onCameraClick = {
-                        //     door.id.toIntOrNull()?.let { onNavigateToCameraLiveStream(it) }
-                        // }
                     )
                 }
 
@@ -517,18 +515,29 @@ private fun DoorCard(
                         )
                     )
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = door.location,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF6B6B6B),
-                            fontSize = 13.sp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Lokasi Pintu",
+                            tint = Color(0xFF6B6B6B),
+                            modifier = Modifier.size(16.dp)
                         )
-                    )
+                        Text(
+                            text = door.location,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color(0xFF6B6B6B),
+                                fontSize = 13.sp
+                            )
+                        )
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = if (door.locked) "Status: Terkunci" else "Status: Terbuka",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF6B6B6B),
+                            color = if (door.locked) Color(0xFF6B6B6B) else Color(0xFF00A500),
                             fontSize = 13.sp
                         )
                     )

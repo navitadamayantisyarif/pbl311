@@ -47,6 +47,7 @@ val jura = FontFamily(
 
 val lexend = FontFamily(
     Font(R.font.lexend_medium, FontWeight.Medium),
+    Font(R.font.lexend_bold, FontWeight.Bold),
 )
 
 

@@ -8,6 +8,10 @@
     import androidx.activity.compose.setContent
     import androidx.activity.enableEdgeToEdge
     import androidx.activity.result.contract.ActivityResultContracts
+    import androidx.compose.animation.core.Animatable
+    import androidx.compose.animation.core.FastOutSlowInEasing
+    import androidx.compose.animation.core.tween
+    import androidx.compose.foundation.Canvas
     import androidx.compose.foundation.Image
     import androidx.compose.foundation.background
     import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +51,10 @@
     import androidx.compose.ui.Alignment
     import androidx.compose.ui.Modifier
     import androidx.compose.ui.draw.clip
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.Brush
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.Path
     import androidx.compose.ui.graphics.ColorFilter
     import androidx.compose.ui.layout.ContentScale
     import androidx.compose.ui.platform.LocalContext
@@ -59,7 +66,6 @@
     import androidx.compose.ui.unit.sp
     import com.authentic.smartdoor.ui.theme.PurplePrimary
     import com.authentic.smartdoor.ui.theme.SecureDoorTheme
-    import com.authentic.smartdoor.ui.theme.abhayaLibre
     import com.authentic.smartdoor.ui.theme.jura
     import com.authentic.smartdoor.ui.theme.lexend
     import kotlinx.coroutines.delay
@@ -149,6 +155,38 @@
     }
 
     @Composable
+    fun SplashDiagonalBackground(modifier: Modifier = Modifier) {
+        val topX = remember { Animatable(0.5f) }
+        val bottomX = remember { Animatable(0.5f) }
+        LaunchedEffect(Unit) {
+            topX.animateTo(1f, animationSpec = tween(durationMillis = 1600, easing = FastOutSlowInEasing))
+            bottomX.animateTo(0f, animationSpec = tween(durationMillis = 1600, easing = FastOutSlowInEasing))
+        }
+        Canvas(modifier = modifier.fillMaxSize()) {
+            val top = Offset(size.width * topX.value, 0f)
+            val bottom = Offset(size.width * bottomX.value, size.height)
+
+            val leftPath = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(0f, size.height)
+                lineTo(bottom.x, bottom.y)
+                lineTo(top.x, top.y)
+                close()
+            }
+            drawPath(leftPath, color = Color(0xFF7277F1))
+
+            val rightPath = Path().apply {
+                moveTo(top.x, top.y)
+                lineTo(bottom.x, bottom.y)
+                lineTo(size.width, size.height)
+                lineTo(size.width, 0f)
+                close()
+            }
+            drawPath(rightPath, color = Color(0xFFC3A9F0))
+        }
+    }
+
+    @Composable
     fun OnboardingScreen(
         modifier: Modifier = Modifier,
         onGetStartedClick: () -> Unit = {}
@@ -176,8 +214,16 @@
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                        .background(PurplePrimary)
-                ) {
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF7277F1), // atas
+                                    Color(0xFF4928cd)  // bawah
+                                )
+                            )
+                        )
+                )
+                {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -197,17 +243,19 @@
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "YOUR DOOR, YOUR CONTROL",
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 34.sp),
+                                    text = "Your Door, Your Control",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 32
+
+                                        .sp),
                                     color = Color.White,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Kelola akses pintu, cek aktivitas, dan kontol pintu \nkapan pun hanya lewat pintu anda.",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 14.sp),
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+                                    text = "Kelola akses pintu, cek aktivitas, dan \n kontrol pintu kapan pun hanya lewat pintu anda.",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 12.sp),
+                                    color = Color.White,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -217,8 +265,8 @@
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.elevatedButtonColors(
-                                        containerColor = Color(0xFFC4BFFF),
-                                        contentColor = Color.Black
+                                        containerColor = Color(0xFF765EFF),
+                                        contentColor = Color.White
                                     ),
                                     elevation = ButtonDefaults.elevatedButtonElevation(
                                         defaultElevation = 8.dp,
@@ -227,10 +275,10 @@
                                     )
                                 ) {
                                     Text(
-                                        text = "Get Started",
+                                        text = "Mulai",
                                         style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontFamily = abhayaLibre,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontFamily = lexend,
+                                            fontWeight = FontWeight.Bold,
                                             fontSize = 18.sp
                                         )
                                     )
@@ -289,14 +337,20 @@
                 .background(Color.White)
         ) {
 
-            // 🔵 CONTAINER UNGU dengan radius lebih besar
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.82f)
+                    .fillMaxHeight(0.90f)
                     .clip(RoundedCornerShape(topStart = 48.dp, topEnd = 48.dp)) // radius diperbesar
-                    .background(PurplePrimary)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF7277F1),
+                                Color(0xFF3706BE)
+                            )
+                        )
+                    )
             ) {
 
                 // 🔵 SEGMENTED PAGE INDICATOR (di dalam container ungu)
@@ -406,7 +460,7 @@
                 painter = painterResource(id = pageData.imageRes),
                 contentDescription = pageData.title,
                 modifier = Modifier.size(150.dp),
-                colorFilter = if (pageIndex < 2) ColorFilter.tint(Color.White) else null
+                colorFilter = null
             )
             Spacer(modifier = Modifier.height(40.dp))
             Text(
@@ -456,5 +510,13 @@
     fun OnboardingCarouselPreview() {
         SecureDoorTheme {
             OnboardingCarousel(onFinished = {})
+        }
+    }
+
+    @Preview(showBackground = true, name = "Splash Diagonal Animation")
+    @Composable
+    fun SplashDiagonalBackgroundPreview() {
+        SecureDoorTheme {
+            SplashDiagonalBackground()
         }
     }
