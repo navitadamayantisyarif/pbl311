@@ -81,6 +81,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.ui:ui-text-google-fonts:1.9.0")
+    implementation("androidx.compose.foundation:foundation:1.7.0-beta02")
+
 
     // Firebase Messaging
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
