@@ -6,6 +6,8 @@ const { Op } = require('sequelize');
 
 async function getAccessHistory(req, res, next) {
   try {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 50;
     const offset = parseInt(req.query.offset) || 0;
     const doorId = req.query.door_id ? parseInt(req.query.door_id) : null;
@@ -14,8 +16,30 @@ async function getAccessHistory(req, res, next) {
     const endDate = req.query.end_date ? new Date(req.query.end_date) : null;
     const successParam = req.query.success;
 
+    let accessibleDoorIds = [];
+    if (userRole === 'admin') {
+      const doors = await db.DoorStatus.findAll({ attributes: ['id'] });
+      accessibleDoorIds = doors.map(d => Number(d.id));
+    } else {
+      const access = await db.DoorUser.findAll({ where: { user_id: userId }, attributes: ['door_id'] });
+      accessibleDoorIds = access.map(a => Number(a.door_id));
+    }
+
+    if (accessibleDoorIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: { total: 0, limit, offset, has_more: false },
+        message: 'Access history retrieved successfully'
+      });
+    }
+
     const where = {};
-    if (doorId) where.door_id = doorId;
+    if (doorId && accessibleDoorIds.includes(doorId)) {
+      where.door_id = doorId;
+    } else {
+      where.door_id = { [Op.in]: accessibleDoorIds };
+    }
     if (userIdParam) where.user_id = userIdParam;
     if (successParam !== undefined) where.success = successParam === 'true';
     if (startDate || endDate) {
@@ -76,6 +100,8 @@ async function getAccessHistory(req, res, next) {
 
 async function getPhotoHistory(req, res, next) {
   try {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
     const doorId = req.query.door_id ? parseInt(req.query.door_id) : null;
@@ -83,8 +109,31 @@ async function getPhotoHistory(req, res, next) {
     const startDate = req.query.start_date ? new Date(req.query.start_date) : null;
     const endDate = req.query.end_date ? new Date(req.query.end_date) : null;
 
+    // Resolve accessible door ids for this user
+    let accessibleDoorIds = [];
+    if (userRole === 'admin') {
+      const doors = await db.DoorStatus.findAll({ attributes: ['id'] });
+      accessibleDoorIds = doors.map(d => Number(d.id));
+    } else {
+      const access = await db.DoorUser.findAll({ where: { user_id: userId }, attributes: ['door_id'] });
+      accessibleDoorIds = access.map(a => Number(a.door_id));
+    }
+
+    if (accessibleDoorIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: { total: 0, limit, offset, has_more: false },
+        message: 'Photo history retrieved successfully'
+      });
+    }
+
     const where = {};
-    if (doorId) where.door_id = doorId;
+    if (doorId && accessibleDoorIds.includes(doorId)) {
+      where.door_id = doorId;
+    } else {
+      where.door_id = { [Op.in]: accessibleDoorIds };
+    }
     if (eventType) where.event_type = eventType;
     if (startDate || endDate) {
       where.timestamp = {};

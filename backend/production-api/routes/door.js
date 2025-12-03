@@ -16,6 +16,10 @@ router.get('/status',
   doorController.getDoorStatus
 );
 
+router.get('/device/status/:door_id',
+  doorController.getDoorDeviceStatus
+);
+
 /**
  * @route   POST /api/door/control
  * @desc    Control door (lock/unlock)

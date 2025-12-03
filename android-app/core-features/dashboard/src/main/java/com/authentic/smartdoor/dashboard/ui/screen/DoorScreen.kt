@@ -616,7 +616,9 @@ private fun DoorCard(
                     icon = Icons.Default.CameraAlt,
                     onClick = onCameraClick,
                     enabled = door.cameraActive,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    textSize = 11.sp,
+                    iconSize = 16.dp
                 )
             }
         }
@@ -629,7 +631,9 @@ private fun ActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    textSize: androidx.compose.ui.unit.TextUnit = 13.sp,
+    iconSize: androidx.compose.ui.unit.Dp = 18.dp
 ) {
     Button(
         onClick = onClick,
@@ -647,12 +651,12 @@ private fun ActionButton(
         Icon(
             icon,
             contentDescription = null,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(iconSize)
         )
         Spacer(Modifier.width(6.dp))
         Text(
             label,
-            fontSize = 13.sp,
+            fontSize = textSize,
             fontWeight = FontWeight.SemiBold
         )
     }

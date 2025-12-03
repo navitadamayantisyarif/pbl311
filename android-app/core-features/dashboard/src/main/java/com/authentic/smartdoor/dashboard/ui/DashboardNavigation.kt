@@ -161,6 +161,7 @@ fun DashboardNavigation(
                 modifier = modifier,
                 onBackClick = { currentScreen = DashboardScreen.Home },
                 onNavigateToHome = { currentScreen = DashboardScreen.Home },
+                onNavigateToAccessHistory = { currentScreen = DashboardScreen.AccessHistory },
                 onNavigateToAnalytics = { currentScreen = DashboardScreen.Analytics },
                 onNavigateToNotifications = { currentScreen = DashboardScreen.Notifications }
             )

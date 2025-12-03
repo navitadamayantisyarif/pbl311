@@ -41,6 +41,9 @@ interface AccessLogDao {
     @Query("SELECT * FROM access_logs WHERE user_id = :userId ORDER BY timestamp DESC")
     suspend fun getLogsForUser(userId: String): List<AccessLogEntity>
 
+    @Query("SELECT * FROM access_logs ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getRecentLogs(limit: Int = 50): List<AccessLogEntity>
+
     @Query("DELETE FROM access_logs")
     suspend fun clear()
 }
@@ -73,6 +76,9 @@ interface NotificationDao {
 
     @Query("SELECT * FROM notifications ORDER BY created_at DESC")
     fun getNotificationsFlow(): Flow<List<NotificationEntity>>
+
+    @Query("SELECT * FROM notifications ORDER BY created_at DESC")
+    suspend fun getAllNotifications(): List<NotificationEntity>
 
     @Query("UPDATE notifications SET read = 1 WHERE id = :id")
     suspend fun markAsRead(id: String)

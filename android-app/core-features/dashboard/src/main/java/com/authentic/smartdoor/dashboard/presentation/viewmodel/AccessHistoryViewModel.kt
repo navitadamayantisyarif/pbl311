@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AccessHistoryViewModel @Inject constructor(
-    private val repository: DashboardRepository
+    private val repository: DashboardRepository,
+    private val networkMonitor: com.authentic.smartdoor.storage.network.NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AccessHistoryUiState())
@@ -29,7 +30,8 @@ class AccessHistoryViewModel @Inject constructor(
 
     private fun loadAccessHistory() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val showLoading = networkMonitor.isOnline()
+            _uiState.value = _uiState.value.copy(isLoading = showLoading, errorMessage = null)
             
             repository.getAccessHistory()
                 .onSuccess { accessLogs ->
@@ -50,7 +52,8 @@ class AccessHistoryViewModel @Inject constructor(
 
     private fun refreshAccessHistory() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true, errorMessage = null)
+            val showRefreshing = networkMonitor.isOnline()
+            _uiState.value = _uiState.value.copy(isRefreshing = showRefreshing, errorMessage = null)
             
             repository.getAccessHistory()
                 .onSuccess { accessLogs ->

@@ -1,5 +1,3 @@
-# Authentic Smart Door Lock
-
 **PBL Project: Smart Door Authentication System with Mobile App and Web Admin Dashboard**
 
 ## Deskripsi Project

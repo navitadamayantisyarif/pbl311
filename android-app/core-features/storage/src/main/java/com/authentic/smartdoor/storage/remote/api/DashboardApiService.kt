@@ -44,6 +44,12 @@ interface DashboardApiService {
         @Body request: MarkReadRequest
     ): Response<Map<String, Any>>
 
+    @POST("notifications/register-token")
+    suspend fun registerFcmToken(
+        @Header("Authorization") token: String,
+        @Body request: RegisterFcmTokenRequest
+    ): Response<Map<String, Any>>
+
     @GET("users")
     suspend fun getUsers(
         @Header("Authorization") token: String

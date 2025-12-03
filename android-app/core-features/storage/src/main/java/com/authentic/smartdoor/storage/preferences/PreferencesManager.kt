@@ -19,6 +19,7 @@ class PreferencesManager @Inject constructor(
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_FCM_TOKEN = "fcm_token"
     }
 
     fun saveAuthToken(token: String) {
@@ -62,6 +63,12 @@ class PreferencesManager @Inject constructor(
             .remove(KEY_USER_EMAIL)
             .apply()
     }
+
+    fun saveFcmToken(token: String) {
+        sharedPreferences.edit().putString(KEY_FCM_TOKEN, token).apply()
+    }
+
+    fun getFcmToken(): String? = sharedPreferences.getString(KEY_FCM_TOKEN, null)
 }
 
 

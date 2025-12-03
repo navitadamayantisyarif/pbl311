@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,10 +28,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.ui.graphics.nativeCanvas
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -50,12 +59,22 @@ data class AnalyticsChartData(
 @Composable
 fun AnalyticsChart(
     chartData: AnalyticsChartData,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    minHeight: Dp = 380.dp
 ) {
+    val dynamicHeight = remember(chartData) {
+        val points = chartData.dataPoints.size
+        val maxVal = chartData.maxValue
+        val addByPoints = ((points - 8).coerceAtLeast(0)) * 8
+        val addByMax = ((maxVal - 5).coerceAtLeast(0)) * 6
+        val total = (380 + addByPoints + addByMax).coerceIn(380, 520)
+        total.dp
+    }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp),
+            .heightIn(min = minHeight)
+            .height(dynamicHeight),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -65,83 +84,41 @@ fun AnalyticsChart(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Chart Title
-            Text(
-                text = "Perkembangan Total Akses",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1A1A),
-                    fontSize = 16.sp
-                )
-            )
             
-            Spacer(Modifier.height(12.dp))
             
             // Chart Content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 220.dp)
                     .weight(1f)
+                    .padding(top = 8.dp)
             ) {
                 if (chartData.dataPoints.isEmpty()) {
-                    // Empty state
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "Tidak ada data",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = Color(0xFF9E9E9E)
-                                )
+                                style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF9E9E9E))
                             )
                             Text(
                                 text = "Data: ${chartData.totalAccess} akses",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFF9E9E9E)
-                                )
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF9E9E9E))
                             )
                         }
                     }
                 } else {
-                    // Custom Canvas Chart
-                    Column(
+                    BarChartCanvas(
+                        chartData = chartData,
                         modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Chart Canvas
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(vertical = 8.dp)
-                        ) {
-                            drawChart(chartData)
-                        }
-                        
-                        // Labels
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            chartData.dataPoints.forEach { dataPoint ->
-                                Text(
-                                    text = dataPoint.label,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = Color(0xFF6B6B6B),
-                                        fontSize = 10.sp
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
+                    )
                 }
             }
             
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(2.dp))
             
             // Summary
             Row(
@@ -167,46 +144,133 @@ fun AnalyticsChart(
     }
 }
 
-private fun DrawScope.drawChart(chartData: AnalyticsChartData) {
-    val canvasWidth = size.width
-    val canvasHeight = size.height
-    val padding = 20f
-    val chartWidth = canvasWidth - (padding * 2)
-    val chartHeight = canvasHeight - (padding * 2)
-    
-    if (chartData.dataPoints.isEmpty()) return
-    
-    val barWidth = (chartWidth / chartData.dataPoints.size) * 0.7f
-    val barSpacing = (chartWidth / chartData.dataPoints.size) * 0.3f
-    
-    // Draw grid lines first
-    val gridLines = 4
-    for (i in 0..gridLines) {
-        val y = padding + (chartHeight / gridLines * i)
-        drawLine(
-            color = Color(0xFFE0E0E0).copy(alpha = 0.3f),
-            start = Offset(padding, y),
-            end = Offset(padding + chartWidth, y),
-            strokeWidth = 1f
-        )
-    }
-    
-    // Draw bars
-    chartData.dataPoints.forEachIndexed { index, dataPoint ->
-        val barHeight = if (chartData.maxValue > 0) {
-            (dataPoint.value.toFloat() / chartData.maxValue.toFloat() * chartHeight).coerceAtLeast(2f)
-        } else {
-            2f
+@Composable
+private fun BarChartCanvas(chartData: AnalyticsChartData, modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    Canvas(modifier = modifier) {
+        val leftPad = with(density) { 24.dp.toPx() }
+        val bottomPad = with(density) { 48.dp.toPx() }
+        val topPad = with(density) { 14.dp.toPx() }
+        val rightPad = with(density) { 10.dp.toPx() }
+        val chartW = (size.width - leftPad - rightPad).coerceAtLeast(1f)
+        val chartH = (size.height - topPad - bottomPad).coerceAtLeast(1f)
+        val originX = leftPad
+        val originY = size.height - bottomPad
+
+        val rawMax = chartData.maxValue
+        val yMax = if (rawMax <= 0) 1 else rawMax
+        val desiredSpacing = with(density) { 18.dp.toPx() }
+        var targetLines = kotlin.math.max(10, kotlin.math.min(18, (chartH / desiredSpacing).toInt()))
+        if (targetLines <= 0) targetLines = 1
+        val yStep = kotlin.math.ceil(yMax.toFloat() / targetLines).toInt()
+        val gridCount = kotlin.math.max(yMax / yStep, 1)
+
+        val minorDesired = with(density) { 12.dp.toPx() }
+        var subdivisions = kotlin.math.ceil(chartH / (minorDesired * yMax)).toInt()
+        subdivisions = subdivisions.coerceIn(3, 8)
+
+        val totalMinorLines = yMax * subdivisions
+        for (j in 0..totalMinorLines) {
+            val y = originY - (j.toFloat() / subdivisions.toFloat()) * (chartH / yMax.toFloat())
+            val isMajor = (j % subdivisions) == 0
+            drawLine(
+                color = if (isMajor) Color(0xFFE0E0E0) else Color(0xFFF1F1F1),
+                start = Offset(originX, y),
+                end = Offset(originX + chartW, y),
+                strokeWidth = if (isMajor) 1f else 0.8f,
+                cap = StrokeCap.Round
+            )
         }
-        
-        val x = padding + (index * (barWidth + barSpacing)) + (barSpacing / 2)
-        val y = padding + chartHeight - barHeight
-        
-        // Draw bar with rounded corners effect
-        drawRect(
-            color = if (dataPoint.value > 0) Color(0xFF6C63FF) else Color(0xFFE0E0E0),
-            topLeft = Offset(x, y),
-            size = Size(barWidth, barHeight)
+
+        val count = chartData.dataPoints.size
+        if (count > 0) {
+            val baseSlot = chartW / count
+            val minBar = with(density) { 8.dp.toPx() }
+            val maxBar = with(density) { 28.dp.toPx() }
+            var barW = (baseSlot * 0.6f).coerceIn(minBar, maxBar)
+            val minGap = with(density) { 4.dp.toPx() }
+            var gap = (baseSlot - barW).coerceAtLeast(minGap)
+
+            var occupancy = barW * count + gap * (count - 1).coerceAtLeast(0)
+            if (occupancy > chartW) {
+                val extra = occupancy - chartW
+                val reducePerBar = extra / count
+                barW = (barW - reducePerBar).coerceAtLeast(minBar)
+                val remaining = chartW - barW * count
+                gap = if (count > 1) kotlin.math.max(minGap, remaining / (count - 1)) else 0f
+                occupancy = barW * count + gap * (count - 1).coerceAtLeast(0)
+            }
+
+            val startX = originX + (chartW - occupancy) / 2f
+
+            chartData.dataPoints.forEachIndexed { idx, p ->
+                val scaled = (p.value.coerceAtLeast(0)).toFloat() * (chartH / yMax.toFloat())
+                val h = scaled.coerceAtLeast(with(density) { 12.dp.toPx() })
+                val x = startX + idx * (barW + gap)
+                val y = originY - h
+                drawRect(
+                    color = if (p.value > 0) Color(0xFF6C63FF) else Color(0xFFE0E0E0),
+                    topLeft = Offset(x, y),
+                    size = Size(barW, h)
+                )
+            }
+
+            drawIntoCanvas { c ->
+                val labelPaint = Paint().apply {
+                    color = android.graphics.Color.parseColor("#6B6B6B")
+                    textSize = with(density) { 11.sp.toPx() }
+                    isAntiAlias = true
+                    textAlign = Paint.Align.CENTER
+                }
+                val yPaint = Paint().apply {
+                    color = android.graphics.Color.parseColor("#9E9E9E")
+                    textSize = with(density) { 10.sp.toPx() }
+                    isAntiAlias = true
+                    typeface = Typeface.DEFAULT
+                    textAlign = Paint.Align.RIGHT
+                }
+
+                for (i in 0..gridCount) {
+                    val v = i * yStep
+                    val y = originY - v * (chartH / yMax.toFloat())
+                    c.nativeCanvas.drawText(v.toString(), originX - with(density) { 6.dp.toPx() }, y + with(density) { 3.dp.toPx() }, yPaint)
+                }
+
+                chartData.dataPoints.forEachIndexed { idx, p ->
+                    val baseSlot = chartW / count
+                    val minBar = with(density) { 8.dp.toPx() }
+                    val maxBar = with(density) { 28.dp.toPx() }
+                    var barW = (baseSlot * 0.6f).coerceIn(minBar, maxBar)
+                    val minGap = with(density) { 4.dp.toPx() }
+                    var gap = (baseSlot - barW).coerceAtLeast(minGap)
+                    var occupancy = barW * count + gap * (count - 1).coerceAtLeast(0)
+                    if (occupancy > chartW) {
+                        val extra = occupancy - chartW
+                        val reducePerBar = extra / count
+                        barW = (barW - reducePerBar).coerceAtLeast(minBar)
+                        val remaining = chartW - barW * count
+                        gap = if (count > 1) kotlin.math.max(minGap, remaining / (count - 1)) else 0f
+                        occupancy = barW * count + gap * (count - 1).coerceAtLeast(0)
+                    }
+                    val startX = originX + (chartW - occupancy) / 2f
+                    val center = startX + idx * (barW + gap) + (barW / 2f)
+                    c.nativeCanvas.drawText(p.label, center, originY + with(density) { 12.dp.toPx() }, labelPaint)
+                }
+            }
+        }
+        drawLine(
+            color = Color(0xFFBDBDBD),
+            start = Offset(originX, originY),
+            end = Offset(originX + chartW, originY),
+            strokeWidth = 1.5f,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = Color(0xFFBDBDBD),
+            start = Offset(originX, originY - chartH),
+            end = Offset(originX, originY),
+            strokeWidth = 1.5f,
+            cap = StrokeCap.Round
         )
     }
 }
@@ -215,124 +279,108 @@ private fun DrawScope.drawChart(chartData: AnalyticsChartData) {
 object ChartDataGenerator {
     
     fun generateDailyData(accessLogs: List<com.authentic.smartdoor.dashboard.domain.model.AccessLog>): AnalyticsChartData {
-        val hourlyData = mutableMapOf<Int, Int>()
-        
-        // Initialize all hours with 0
-        for (hour in 0..23) {
-            hourlyData[hour] = 0
-        }
-        
-        // Count access logs by hour
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        val end = start + 24L * 60L * 60L * 1000L
+
+        val buckets = IntArray(12) { 0 } // 2-jam per bucket
+        var total = 0
         accessLogs.forEach { log ->
-            val timestamp = getTimestampFromLog(log.timestamp)
-            if (timestamp > 0) {
-                val hour = getHourFromTimestamp(timestamp)
-                hourlyData[hour] = hourlyData[hour]!! + 1
+            val ts = getTimestampFromLog(log.timestamp)
+            if (ts in start until end) {
+                val hour = getHourFromTimestamp(ts)
+                val idx = (hour / 2).coerceIn(0, 11)
+                buckets[idx] = buckets[idx] + 1
+                total++
             }
         }
-        
-        // Create data points for every 3 hours (00, 03, 06, 09, 12, 15, 18, 21)
-        val dataPoints = mutableListOf<ChartDataPoint>()
-        for (hour in 0..23 step 3) {
-            val value = hourlyData[hour] ?: 0
-            dataPoints.add(
-                ChartDataPoint(
-                    label = String.format("%02d", hour),
-                    value = value,
-                    timestamp = getTimestampForHour(hour)
-                )
-            )
+        val points = (0..11).map { i ->
+            val h = i * 2
+            ChartDataPoint(label = String.format("%02d", h), value = buckets[i], timestamp = getTimestampForHour(h))
         }
-        
-        val maxValue = dataPoints.maxOfOrNull { it.value } ?: 0
-        val totalAccess = dataPoints.sumOf { it.value }
-        
-        // Debug logging
-        println("ChartDataGenerator.generateDailyData:")
-        println("  Access logs count: ${accessLogs.size}")
-        println("  Data points: ${dataPoints.size}")
-        println("  Max value: $maxValue")
-        println("  Total access: $totalAccess")
-        dataPoints.forEach { point ->
-            println("  ${point.label}: ${point.value}")
-        }
-        
-        return AnalyticsChartData(dataPoints, maxValue, totalAccess)
+        val maxValue = points.maxOfOrNull { it.value } ?: 0
+        return AnalyticsChartData(points, maxValue, total)
     }
-    
+
     fun generateWeeklyData(accessLogs: List<com.authentic.smartdoor.dashboard.domain.model.AccessLog>): AnalyticsChartData {
-        val dailyData = mutableMapOf<String, Int>()
-        
-        // Initialize all days with 0
+        val cal = Calendar.getInstance()
+        cal.firstDayOfWeek = Calendar.MONDAY
+        // Move to start of week (Monday)
+        while (cal.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        val end = start + 7L * 24L * 60L * 60L * 1000L
+
         val days = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
-        days.forEach { day ->
-            dailyData[day] = 0
-        }
-        
-        // Count access logs by day of week
+        val daily = IntArray(7) { 0 }
+        var total = 0
         accessLogs.forEach { log ->
-            val timestamp = getTimestampFromLog(log.timestamp)
-            if (timestamp > 0) {
-                val dayOfWeek = getDayOfWeekFromTimestamp(timestamp)
-                dailyData[dayOfWeek] = dailyData[dayOfWeek]!! + 1
-            }
-        }
-        
-        // Create data points for each day
-        val dataPoints = days.map { day ->
-            ChartDataPoint(
-                label = day,
-                value = dailyData[day] ?: 0,
-                timestamp = getTimestampForDay(day)
-            )
-        }
-        
-        val maxValue = dataPoints.maxOfOrNull { it.value } ?: 0
-        val totalAccess = dataPoints.sumOf { it.value }
-        
-        return AnalyticsChartData(dataPoints, maxValue, totalAccess)
-    }
-    
-    fun generateMonthlyData(accessLogs: List<com.authentic.smartdoor.dashboard.domain.model.AccessLog>): AnalyticsChartData {
-        val weeklyData = mutableMapOf<Int, Int>()
-        
-        // Initialize all weeks with 0
-        for (week in 1..4) {
-            weeklyData[week] = 0
-        }
-        
-        // Count access logs by week of month
-        accessLogs.forEach { log ->
-            val timestamp = getTimestampFromLog(log.timestamp)
-            if (timestamp > 0) {
-                val week = getWeekOfMonthFromTimestamp(timestamp)
-                if (week in 1..4) {
-                    weeklyData[week] = weeklyData[week]!! + 1
+            val ts = getTimestampFromLog(log.timestamp)
+            if (ts in start until end) {
+                val d = getDayOfWeekFromTimestamp(ts)
+                val idx = days.indexOf(d)
+                if (idx >= 0) {
+                    daily[idx] = daily[idx] + 1
+                    total++
                 }
             }
         }
-        
-        // Create data points for each week
-        val dataPoints = (1..4).map { week ->
-            ChartDataPoint(
-                label = "M$week",
-                value = weeklyData[week] ?: 0,
-                timestamp = getTimestampForWeek(week)
-            )
+        val points = days.mapIndexed { i, label ->
+            ChartDataPoint(label = label, value = daily[i], timestamp = getTimestampForDay(label))
         }
-        
-        val maxValue = dataPoints.maxOfOrNull { it.value } ?: 0
-        val totalAccess = dataPoints.sumOf { it.value }
-        
-        return AnalyticsChartData(dataPoints, maxValue, totalAccess)
+        val maxValue = points.maxOfOrNull { it.value } ?: 0
+        return AnalyticsChartData(points, maxValue, total)
+    }
+
+    fun generateMonthlyData(accessLogs: List<com.authentic.smartdoor.dashboard.domain.model.AccessLog>): AnalyticsChartData {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        val end = cal.apply { add(Calendar.MONTH, 1) }.timeInMillis
+
+        val weeks = (1..5).toList()
+        val weekly = IntArray(5) { 0 }
+        var total = 0
+        accessLogs.forEach { log ->
+            val ts = getTimestampFromLog(log.timestamp)
+            if (ts in start until end) {
+                val w = getWeekOfMonthFromTimestamp(ts)
+                if (w in 1..5) {
+                    weekly[w - 1] = weekly[w - 1] + 1
+                    total++
+                }
+            }
+        }
+        val points = weeks.map { w ->
+            ChartDataPoint(label = "M$w", value = weekly[w - 1], timestamp = getTimestampForWeek(w))
+        }
+        val maxValue = points.maxOfOrNull { it.value } ?: 0
+        return AnalyticsChartData(points, maxValue, total)
     }
     
     // Helper functions to extract data from access logs
     private fun getTimestampFromLog(timestamp: String): Long {
         return try {
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).parse(timestamp)?.time ?: 0L
-        } catch (e: Exception) {
-            0L
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault()).parse(timestamp)?.time ?: 0L
+        } catch (_: Exception) {
+            try {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.getDefault()).parse(timestamp)?.time ?: 0L
+            } catch (_: Exception) {
+                0L
+            }
         }
     }
     
@@ -362,6 +410,23 @@ object ChartDataGenerator {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = timestamp
         return calendar.get(Calendar.WEEK_OF_MONTH)
+    }
+    
+    private fun getMonthOfYearFromTimestamp(timestamp: Long): Int {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        return calendar.get(Calendar.MONTH) + 1
+    }
+    
+    private fun tsForMonth(month: Int): Long {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.MONTH, month - 1)
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
     
     private fun getTimestampForHour(hour: Int): Long {

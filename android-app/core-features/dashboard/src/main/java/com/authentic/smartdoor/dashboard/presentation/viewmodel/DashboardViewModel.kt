@@ -14,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val dashboardRepository: DashboardRepository
+    private val dashboardRepository: DashboardRepository,
+    private val networkMonitor: com.authentic.smartdoor.storage.network.NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -36,7 +37,8 @@ class DashboardViewModel @Inject constructor(
 
     private fun loadDashboardData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val showLoading = networkMonitor.isOnline()
+            _uiState.value = _uiState.value.copy(isLoading = showLoading, errorMessage = null)
             
             dashboardRepository.getDashboardData()
                 .fold(
@@ -66,7 +68,8 @@ class DashboardViewModel @Inject constructor(
 
     private fun refreshData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true, errorMessage = null)
+            val showRefreshing = networkMonitor.isOnline()
+            _uiState.value = _uiState.value.copy(isRefreshing = showRefreshing, errorMessage = null)
             
             dashboardRepository.refreshData()
                 .fold(

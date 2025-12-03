@@ -42,10 +42,11 @@ object StorageDatabaseModule {
     
     @Provides fun provideDashboardLocalDataSource(
         doorStatusDao: DoorStatusDao,
-        notificationDao: NotificationDao
+        notificationDao: NotificationDao,
+        accessLogDao: AccessLogDao
     ): com.authentic.smartdoor.storage.local.datasource.DashboardLocalDataSource {
         return com.authentic.smartdoor.storage.local.datasource.DashboardLocalDataSourceImpl(
-            doorStatusDao, notificationDao
+            doorStatusDao, notificationDao, accessLogDao
         )
     }
 }

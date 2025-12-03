@@ -2,6 +2,7 @@
 
 const db = require('../models');
 const logger = require('../utils/logger');
+const { sendToToken, sendToTokens } = require('../utils/fcm');
 
 /**
  * Get Door Status
@@ -148,6 +149,33 @@ async function controlDoor(req, res, next) {
         ip_address: req.ip || req.connection.remoteAddress
       }, { transaction: t });
     });
+
+    try {
+      const actor = await db.User.findByPk(userId);
+      const actorName = actor?.name || 'Pengguna';
+      const statusWord = internalAction === 'buka' ? 'terbuka' : 'terkunci';
+      const actionVerb = internalAction === 'buka' ? 'dibuka' : 'dikunci';
+      const title = `${door.name} ${statusWord}`;
+      const body = `${door.name} telah ${actionVerb} oleh ${actorName}`;
+
+      const accessUsers = await db.DoorUser.findAll({ where: { door_id: doorIdInt } });
+      const userIds = accessUsers.map(a => a.user_id);
+      const users = userIds.length ? await db.User.findAll({ where: { id: userIds } }) : [];
+
+      const tokens = users.map(u => u.fcm_token).filter(t => !!t);
+      if (tokens.length) {
+        await sendToTokens(tokens, { title, body });
+      }
+
+      const now = new Date();
+      const type = internalAction === 'buka' ? 'door_unlock' : 'door_lock';
+      const notifRows = users.map(u => ({ user_id: u.id, type, title, message: body, read: false, created_at: now, updated_at: now }));
+      if (notifRows.length) {
+        await db.Notification.bulkCreate(notifRows);
+      }
+    } catch (pushErr) {
+      logger.warn('Failed to broadcast push notification:', pushErr);
+    }
 
     const updatedDoor = await db.DoorStatus.findByPk(doorIdInt);
     res.json({

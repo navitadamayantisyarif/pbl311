@@ -22,7 +22,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun handleGoogleSignInResult(account: GoogleSignInAccount): Result<User> {
         return runCatching {
-            val idToken = account.idToken ?: "mock_google_token_123"
+            val idToken = account.idToken ?: throw IllegalStateException("ID Token tidak tersedia dari Google Sign-In. Pastikan requestIdToken dikonfigurasi dengan benar.")
             val authData = remote.authenticateWithGoogle(
                 idToken = idToken,
                 email = account.email,

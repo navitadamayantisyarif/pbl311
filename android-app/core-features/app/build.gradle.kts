@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -20,6 +21,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("releaseKey") {
+            storeFile = file("D:/Project/PBL-211/authentic-smart-door-lock/android-app/core-features/app/release-key")
+            storePassword = "hafiz24"
+            keyAlias = "release-key"
+            keyPassword = "hafiz24"
+        }
+        create("debugKey") {
+            storeFile = file("D:/Project/PBL-211/authentic-smart-door-lock/android-app/core-features/app/release-key")
+            storePassword = "hafiz24"
+            keyAlias = "release-key"
+            keyPassword = "hafiz24"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -27,8 +43,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("releaseKey")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debugKey")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -60,6 +81,14 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.ui:ui-text-google-fonts:1.9.0")
+
+    // Firebase Messaging
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
+    implementation("com.google.firebase:firebase-messaging")
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines)
+    implementation("com.google.firebase:firebase-analytics")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

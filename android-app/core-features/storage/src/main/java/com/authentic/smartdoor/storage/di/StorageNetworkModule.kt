@@ -58,7 +58,7 @@ object StorageNetworkModule {
     @Named("authRetrofit")
     fun provideAuthRetrofit(@Named("baseClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://192.168.122.163:5002/api/")
+            .baseUrl("http://192.168.0.102:5002/api/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -69,7 +69,7 @@ object StorageNetworkModule {
     @Singleton
     fun provideRetrofit(@Named("mainClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://192.168.122.163:5002/api/")
+            .baseUrl("http://192.168.0.102:5002/api/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

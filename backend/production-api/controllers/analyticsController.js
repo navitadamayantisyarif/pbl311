@@ -14,28 +14,72 @@ async function getDashboard(req, res, next) {
     let accessibleDoors = [];
     if (userRole === 'admin') {
       const doors = await db.DoorStatus.findAll({ attributes: ['id', 'name', 'location'] });
-      accessibleDoors = doors.map(d => ({ id: d.id, name: d.name, location: d.location }));
+      accessibleDoors = doors.map(d => ({ id: Number(d.id), name: d.name, location: d.location }));
     } else {
       const access = await db.DoorUser.findAll({
         where: { user_id: userId },
         include: [{ model: db.DoorStatus, as: 'door', attributes: ['id', 'name', 'location'] }]
       });
-      accessibleDoors = access.map(a => ({ id: a.door.id, name: a.door.name, location: a.door.location }));
+      accessibleDoors = access.map(a => ({ id: Number(a.door.id), name: a.door.name, location: a.door.location }));
     }
 
-    const accessibleDoorIds = accessibleDoors.map(d => d.id);
+    const accessibleDoorIds = accessibleDoors.map(d => Number(d.id));
+
+    if (userRole !== 'admin' && accessibleDoorIds.length === 0) {
+      const analyticsData = {
+        metrics: {
+          totalAccess: { value: 0, change: '+0%', changeType: 'positive' },
+          deniedAccess: { value: 0, change: '+0%', changeType: 'positive' },
+          lockedDoors: { value: 0, change: '+0%', changeType: 'positive' },
+          openedDoors: { value: 0, change: '+0%', changeType: 'positive' }
+        },
+        chartData: [],
+        activeHours: [],
+        availableDoors: [],
+        accessLogs: []
+      };
+      return res.json({ success: true, data: analyticsData, message: 'Analytics data retrieved successfully' });
+    }
 
     const where = {};
-    if (accessibleDoorIds.length > 0) {
-      where.door_id = { [db.Sequelize.Op.in]: accessibleDoorIds };
-    }
-    if (doorIdFilter && accessibleDoorIds.includes(doorIdFilter)) {
-      where.door_id = doorIdFilter;
+    if (userRole === 'admin') {
+      if (doorIdFilter != null) {
+        where.door_id = doorIdFilter;
+      }
+    } else {
+      if (doorIdFilter != null) {
+        if (!accessibleDoorIds.includes(doorIdFilter)) {
+          const analyticsData = {
+            metrics: {
+              totalAccess: { value: 0, change: '+0%', changeType: 'positive' },
+              deniedAccess: { value: 0, change: '+0%', changeType: 'positive' },
+              lockedDoors: { value: 0, change: '+0%', changeType: 'positive' },
+              openedDoors: { value: 0, change: '+0%', changeType: 'positive' }
+            },
+            chartData: [],
+            activeHours: [],
+            availableDoors: accessibleDoors,
+            accessLogs: []
+          };
+          return res.json({ success: true, data: analyticsData, message: 'Analytics data retrieved successfully' });
+        }
+        where.door_id = doorIdFilter;
+      } else {
+        where.door_id = { [db.Sequelize.Op.in]: accessibleDoorIds };
+      }
     }
     if (startDate || endDate) {
       where.timestamp = {};
       if (startDate) where.timestamp[db.Sequelize.Op.gte] = startDate;
       if (endDate) where.timestamp[db.Sequelize.Op.lte] = endDate;
+    }
+
+    if (!startDate && !endDate) {
+      const cal = new Date();
+      const end = new Date(cal);
+      const start = new Date(cal);
+      start.setDate(start.getDate() - 30);
+      where.timestamp = { [db.Sequelize.Op.between]: [start, end] };
     }
 
     const accessLogs = await db.AccessLog.findAll({
@@ -55,9 +99,11 @@ async function getDashboard(req, res, next) {
       hourlyActivity[hour] = (hourlyActivity[hour] || 0) + 1;
     });
 
+    // Aggregate into 2-hour buckets for daily view (frontend sends specific date range)
     const chartData = [];
-    for (let i = 0; i < 24; i++) {
-      chartData.push({ hour: i, count: hourlyActivity[i] || 0 });
+    for (let h = 0; h < 24; h += 2) {
+      const count = (hourlyActivity[h] || 0) + (hourlyActivity[h + 1] || 0);
+      chartData.push({ hour: h, count });
     }
 
     const sortedHours = Object.entries(hourlyActivity).sort(([, a], [, b]) => b - a).slice(0, 3);

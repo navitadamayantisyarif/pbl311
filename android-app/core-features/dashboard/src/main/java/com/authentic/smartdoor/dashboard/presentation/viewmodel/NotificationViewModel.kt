@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
-    private val dashboardRepository: DashboardRepository
+    private val dashboardRepository: DashboardRepository,
+    private val networkMonitor: com.authentic.smartdoor.storage.network.NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationUiState())
@@ -28,7 +29,8 @@ class NotificationViewModel @Inject constructor(
 
     private fun loadNotifications() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val showLoading = networkMonitor.isOnline()
+            _uiState.value = _uiState.value.copy(isLoading = showLoading, error = null)
             
             dashboardRepository.refreshNotifications()
                 .onSuccess { notifications ->
@@ -46,7 +48,7 @@ class NotificationViewModel @Inject constructor(
 
     fun markNotificationAsRead(notificationIds: List<String>) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = networkMonitor.isOnline(), error = null)
             
             dashboardRepository.markNotificationsAsRead(notificationIds)
                 .onSuccess {

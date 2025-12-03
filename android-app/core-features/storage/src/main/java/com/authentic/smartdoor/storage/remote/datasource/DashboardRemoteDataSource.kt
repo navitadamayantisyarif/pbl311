@@ -70,6 +70,11 @@ class DashboardRemoteDataSource @Inject constructor(
         return response.isSuccessful
     }
 
+    suspend fun registerFcmToken(tokenValue: String): Boolean {
+        val response = api.registerFcmToken(bearer(), RegisterFcmTokenRequest(fcm_token = tokenValue))
+        return response.isSuccessful
+    }
+
     suspend fun getUsers(): UserListResponse {
         val response = api.getUsers(bearer())
         if (response.isSuccessful) {

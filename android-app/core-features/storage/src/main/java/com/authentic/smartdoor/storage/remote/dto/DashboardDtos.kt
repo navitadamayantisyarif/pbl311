@@ -21,6 +21,7 @@ data class DoorListResponse(
 data class NotificationDto(
     val id: Int,
     val user_id: Int?,
+    val title: String,
     val type: String,
     val message: String,
     val read: Boolean,
@@ -43,7 +44,7 @@ data class AccessLogDto(
     val timestamp: String,
     val success: Boolean,
     val method: String?,
-    val ip_address: String,
+    val ip_address: String?,
     val camera_capture_id: Int?,
     val user: UserDto? = null,
     val door: DoorDto? = null,
@@ -66,6 +67,10 @@ data class CameraCaptureDto(
 
 data class MarkReadRequest(
     val notification_ids: List<Int>
+)
+
+data class RegisterFcmTokenRequest(
+    val fcm_token: String
 )
 
 data class DoorControlRequest(

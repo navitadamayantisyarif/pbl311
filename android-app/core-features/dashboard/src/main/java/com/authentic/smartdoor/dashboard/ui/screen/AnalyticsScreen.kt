@@ -1,6 +1,8 @@
 package com.authentic.smartdoor.dashboard.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,12 +67,13 @@ fun AnalyticsScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
+    onNavigateToAccessHistory: () -> Unit = {},
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTimePeriod by remember { mutableStateOf("Harian") }
+    var selectedTimePeriod by remember { mutableStateOf("Hari Ini") }
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -108,7 +111,7 @@ fun AnalyticsScreen(
         bottomBar = { 
             BottomBar(
                 onHomeClick = onNavigateToHome,
-                onAccessHistoryClick = { /* Navigate to access history */ },
+                onAccessHistoryClick = onNavigateToAccessHistory,
                 onNotificationsClick = onNavigateToNotifications,
                 onAnalyticsClick = { /* Already on analytics */ },
                 currentScreen = DashboardScreen.Analytics
@@ -130,6 +133,7 @@ fun AnalyticsScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .background(Color(0xFFF7F6FF))
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp)
             ) {
             Spacer(Modifier.height(8.dp))
@@ -187,6 +191,61 @@ fun AnalyticsScreen(
                         },
                         onClick = {
                             viewModel.handleEvent(AnalyticsEvent.SelectDoor(null, "Semua Pintu"))
+                            val tzUtc = java.util.TimeZone.getTimeZone("UTC")
+                            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply { timeZone = tzUtc }
+                            val cal = java.util.Calendar.getInstance()
+                            val startIso = when (selectedTimePeriod) {
+                                "Hari Ini" -> {
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                                "Minggu Ini" -> {
+                                    cal.firstDayOfWeek = java.util.Calendar.MONDAY
+                                    while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) {
+                                        cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                                    }
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                                else -> {
+                                    cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                            }
+                            val endIso = when (selectedTimePeriod) {
+                                "Hari Ini" -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.DAY_OF_YEAR, 1)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                                "Minggu Ini" -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.DAY_OF_YEAR, 7)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                                else -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.MONTH, 1)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                            }
+                            viewModel.handleEvent(AnalyticsEvent.FilterByDateRange(startIso, endIso))
                             isDropdownExpanded = false
                         }
                     )
@@ -205,6 +264,61 @@ fun AnalyticsScreen(
                             },
                             onClick = {
                                 viewModel.handleEvent(AnalyticsEvent.SelectDoor(door.id, door.name))
+                                val tzUtc = java.util.TimeZone.getTimeZone("UTC")
+                                val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply { timeZone = tzUtc }
+                                val cal = java.util.Calendar.getInstance()
+                                val startIso = when (selectedTimePeriod) {
+                                    "Hari Ini" -> {
+                                        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                        cal.set(java.util.Calendar.MINUTE, 0)
+                                        cal.set(java.util.Calendar.SECOND, 0)
+                                        cal.set(java.util.Calendar.MILLISECOND, 0)
+                                        fmt.format(cal.time)
+                                    }
+                                    "Minggu Ini" -> {
+                                        cal.firstDayOfWeek = java.util.Calendar.MONDAY
+                                        while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) {
+                                            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                                        }
+                                        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                        cal.set(java.util.Calendar.MINUTE, 0)
+                                        cal.set(java.util.Calendar.SECOND, 0)
+                                        cal.set(java.util.Calendar.MILLISECOND, 0)
+                                        fmt.format(cal.time)
+                                    }
+                                    else -> {
+                                        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                                        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                        cal.set(java.util.Calendar.MINUTE, 0)
+                                        cal.set(java.util.Calendar.SECOND, 0)
+                                        cal.set(java.util.Calendar.MILLISECOND, 0)
+                                        fmt.format(cal.time)
+                                    }
+                                }
+                                val endIso = when (selectedTimePeriod) {
+                                    "Hari Ini" -> {
+                                        val endCal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = cal.timeInMillis
+                                            add(java.util.Calendar.DAY_OF_YEAR, 1)
+                                        }
+                                        fmt.format(endCal.time)
+                                    }
+                                    "Minggu Ini" -> {
+                                        val endCal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = cal.timeInMillis
+                                            add(java.util.Calendar.DAY_OF_YEAR, 7)
+                                        }
+                                        fmt.format(endCal.time)
+                                    }
+                                    else -> {
+                                        val endCal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = cal.timeInMillis
+                                            add(java.util.Calendar.MONTH, 1)
+                                        }
+                                        fmt.format(endCal.time)
+                                    }
+                                }
+                                viewModel.handleEvent(AnalyticsEvent.FilterByDateRange(startIso, endIso))
                                 isDropdownExpanded = false
                             }
                         )
@@ -288,12 +402,72 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val timePeriods = listOf("Harian", "Mingguan", "Bulanan")
+                val timePeriods = listOf("Hari Ini", "Minggu Ini", "Bulan Ini")
                 timePeriods.forEach { period ->
                     TimePeriodTab(
                         text = period,
                         isSelected = selectedTimePeriod == period,
-                        onClick = { selectedTimePeriod = period },
+                        onClick = {
+                            selectedTimePeriod = period
+                            val tzUtc = java.util.TimeZone.getTimeZone("UTC")
+                            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply { timeZone = tzUtc }
+                            val cal = java.util.Calendar.getInstance() // local timezone for logical period boundaries
+                            val startIso = when (period) {
+                                "Hari Ini" -> {
+                                    cal.timeInMillis = System.currentTimeMillis()
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                                "Minggu Ini" -> {
+                                    cal.timeInMillis = System.currentTimeMillis()
+                                    cal.firstDayOfWeek = java.util.Calendar.MONDAY
+                                    while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) {
+                                        cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                                    }
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                                else -> { // Bulan Ini
+                                    cal.timeInMillis = System.currentTimeMillis()
+                                    cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    cal.set(java.util.Calendar.MINUTE, 0)
+                                    cal.set(java.util.Calendar.SECOND, 0)
+                                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                                    fmt.format(cal.time)
+                                }
+                            }
+                            val endIso = when (period) {
+                                "Hari Ini" -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.DAY_OF_YEAR, 1)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                                "Minggu Ini" -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.DAY_OF_YEAR, 7)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                                else -> {
+                                    val endCal = java.util.Calendar.getInstance().apply {
+                                        timeInMillis = cal.timeInMillis
+                                        add(java.util.Calendar.MONTH, 1)
+                                    }
+                                    fmt.format(endCal.time)
+                                }
+                            }
+                            viewModel.handleEvent(AnalyticsEvent.FilterByDateRange(startIso, endIso))
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -305,9 +479,9 @@ fun AnalyticsScreen(
             uiState.analyticsData?.let { data ->
                 val chartData = remember(selectedTimePeriod, data) {
                     when (selectedTimePeriod) {
-                        "Harian" -> ChartDataGenerator.generateDailyData(data.accessLogs ?: emptyList())
-                        "Mingguan" -> ChartDataGenerator.generateWeeklyData(data.accessLogs ?: emptyList())
-                        "Bulanan" -> ChartDataGenerator.generateMonthlyData(data.accessLogs ?: emptyList())
+                        "Hari Ini" -> ChartDataGenerator.generateDailyData(data.accessLogs ?: emptyList())
+                        "Minggu Ini" -> ChartDataGenerator.generateWeeklyData(data.accessLogs ?: emptyList())
+                        "Bulan Ini" -> ChartDataGenerator.generateMonthlyData(data.accessLogs ?: emptyList())
                         else -> ChartDataGenerator.generateDailyData(data.accessLogs ?: emptyList())
                     }
                 }

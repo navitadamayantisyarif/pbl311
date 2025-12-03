@@ -40,6 +40,8 @@ android {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
+    implementation("com.google.firebase:firebase-messaging")
     val roomVersion = "2.6.1"
     val retrofitVersion = "2.11.0"
     val okhttpVersion = "4.12.0"
@@ -101,4 +103,5 @@ dependencies {
     implementation("com.google.android.exoplayer:exoplayer-rtsp:2.19.1")
     implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
 
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 }

@@ -18,10 +18,17 @@ import javax.inject.Inject
 import android.content.SharedPreferences
 import android.widget.Toast
 import com.authentic.smartdoor.storage.preferences.PreferencesManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.authentic.smartdoor.storage.remote.datasource.DashboardRemoteDataSource
+import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 
 @AndroidEntryPoint
 class DashboardActivity : ComponentActivity() {
     @Inject lateinit var preferencesManager: PreferencesManager
+    @Inject lateinit var remoteDataSource: DashboardRemoteDataSource
     private var prefListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var authLaunching: Boolean = false
     private val authLauncher = registerForActivityResult(
@@ -53,6 +60,17 @@ class DashboardActivity : ComponentActivity() {
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful && preferencesManager.isLoggedIn()) {
+                    val t = task.result
+                    Log.d("FCM", "Dashboard token: $t")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try { remoteDataSource.registerFcmToken(t) } catch (_: Exception) {}
+                    }
+                }
+            }
+        } catch (_: Exception) {}
         enableEdgeToEdge()
         setContent {
             DashboardTheme {

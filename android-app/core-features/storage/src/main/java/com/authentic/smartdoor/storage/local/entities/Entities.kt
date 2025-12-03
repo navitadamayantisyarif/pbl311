@@ -20,11 +20,13 @@ data class UserEntity(
 data class AccessLogEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "user_id") val userId: String,
+    @ColumnInfo(name = "door_id") val doorId: String,
     val action: String,
     val timestamp: Long,
     val success: Boolean,
     val method: String,
-    @ColumnInfo(name = "ip_address") val ipAddress: String
+    @ColumnInfo(name = "ip_address") val ipAddress: String,
+    @ColumnInfo(name = "camera_capture_id") val cameraCaptureId: String?
 )
 
 @Entity(tableName = "door_status")

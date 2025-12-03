@@ -66,13 +66,13 @@ function createRateLimiter(options = {}) {
 // Pre-configured rate limiters
 const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 login attempts per 15 minutes
+  max: 10, // 5 login attempts per 15 minutes
   message: 'Too many authentication attempts, please try again later'
 });
 
 const generalRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // 100 requests per 15 minutes
+  windowMs: 5 * 60 * 1000, // 15 minutes
+  max: 100000, // 100 requests per 15 minutes
   message: 'Too many requests, please try again later'
 });
 

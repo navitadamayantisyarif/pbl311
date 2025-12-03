@@ -4,7 +4,7 @@ const db = require('../models');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
 const logger = require('../utils/logger');
 const { Op } = require('sequelize');
-const crypto = require('crypto');
+const { verifyGoogleToken } = require('../utils/googleOAuth');
 
 /**
  * Google Sign-In Authentication
@@ -15,48 +15,25 @@ const crypto = require('crypto');
  */
 async function googleSignIn(req, res, next) {
   try {
-    const { id_token, email, name, picture } = req.body;
+    const { id_token, email: emailInput, name: nameInput, picture: pictureInput } = req.body;
+    const verified = await verifyGoogleToken(id_token);
+    const google_id = verified.sub;
+    const email = emailInput || verified.email;
+    const name = nameInput || verified.name;
+    const picture = pictureInput || verified.picture;
 
-    // Extract google_id dari id_token (decode JWT tanpa verify signature)
-    // Format JWT: header.payload.signature -> payload berisi sub (Google user ID)
-    let google_id = null;
-    try {
-      // Decode base64 payload dari JWT
-      const parts = id_token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-        google_id = payload.sub || payload.user_id || null;
-      }
-    } catch (decodeError) {
-      logger.warn('Failed to decode id_token, using hash instead:', decodeError.message);
-      // Fallback: gunakan hash dari id_token jika decode gagal
-      google_id = crypto.createHash('sha256').update(id_token).digest('hex').substring(0, 64);
-    }
-
-    // Jika masih null, gunakan hash
-    if (!google_id) {
-      google_id = crypto.createHash('sha256').update(id_token).digest('hex').substring(0, 64);
-    }
-
-    // Find or create user berdasarkan email atau google_id
+    // Cari user hanya berdasarkan google_id agar setiap akun Google unik
     let user = await db.User.findOne({
-      where: {
-        [Op.or]: [
-          { email: email },
-          { google_id: google_id }
-        ]
-      }
+      where: { google_id: google_id }
     });
 
     const isNewUser = !user;
 
     if (user) {
-      // Update existing user dengan data terbaru
       await user.update({
-        google_id: google_id,
         name: name || user.name,
         avatar: picture || user.avatar,
-        email: email // Update email jika berubah
+        email: email || user.email
       });
     } else {
       // Create new user

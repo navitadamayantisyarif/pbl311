@@ -19,6 +19,8 @@ data class AnalyticsUiState(
     val availableDoors: List<AvailableDoor> = emptyList(),
     val selectedDoorId: Int? = null,
     val selectedDoorName: String = "Semua Pintu",
+    val startDate: String? = null,
+    val endDate: String? = null,
     val errorMessage: String? = null
 )
 
@@ -53,7 +55,11 @@ class AnalyticsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             
             try {
-                val result = repository.getAnalyticsData(_uiState.value.selectedDoorId)
+                val result = repository.getAnalyticsData(
+                    _uiState.value.selectedDoorId,
+                    _uiState.value.startDate,
+                    _uiState.value.endDate
+                )
                 result.fold(
                     onSuccess = { analyticsData ->
                         _uiState.value = _uiState.value.copy(
@@ -113,12 +119,16 @@ class AnalyticsViewModel @Inject constructor(
             selectedDoorId = doorId,
             selectedDoorName = doorName
         )
-        loadAnalyticsDataForSelectedDoor() // Reload data with new filter
+        val start = _uiState.value.startDate
+        val end = _uiState.value.endDate
+        if (start != null && end != null) {
+            loadAnalyticsDataForSelectedDoor()
+        }
     }
 
     private fun filterByDateRange(startDate: String?, endDate: String?) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, startDate = startDate, endDate = endDate)
             
             try {
                 val result = repository.getAnalyticsData(_uiState.value.selectedDoorId, startDate, endDate)
@@ -150,7 +160,7 @@ class AnalyticsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             
             try {
-                val result = repository.getAnalyticsData(_uiState.value.selectedDoorId)
+                val result = repository.getAnalyticsData(_uiState.value.selectedDoorId, _uiState.value.startDate, _uiState.value.endDate)
                 result.fold(
                     onSuccess = { analyticsData ->
                         _uiState.value = _uiState.value.copy(

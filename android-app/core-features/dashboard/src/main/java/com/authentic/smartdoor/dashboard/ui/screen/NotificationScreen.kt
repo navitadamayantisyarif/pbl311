@@ -30,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.authentic.smartdoor.dashboard.domain.model.NotificationModel
 import com.authentic.smartdoor.dashboard.domain.model.toNotificationModel
 import com.authentic.smartdoor.dashboard.presentation.viewmodel.NotificationViewModel
+import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +53,10 @@ fun NotificationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshNotifications()
+    }
 
     Column(
         modifier = modifier

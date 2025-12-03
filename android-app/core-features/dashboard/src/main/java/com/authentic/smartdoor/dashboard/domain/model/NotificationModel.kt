@@ -11,7 +11,7 @@ fun Notification.toNotificationModel(): NotificationModel {
     return NotificationModel(
         id = id,
         type = type,
-        title = type.replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } },
+        title = title,
         message = message,
         read = read,
         createdAt = createdAt
@@ -52,8 +52,8 @@ data class NotificationModel(
     
     val icon: ImageVector
         get() = when (type.lowercase()) {
-            "door_open" -> Icons.Default.Check
-            "door_close" -> Icons.Default.Lock
+            "door_unlock" -> Icons.Default.Check
+            "door_lock" -> Icons.Default.Lock
             "access_denied" -> Icons.Default.Warning
             "system_maintenance" -> Icons.Default.Settings
             "security_alert" -> Icons.Default.Security
@@ -63,8 +63,8 @@ data class NotificationModel(
     
     val iconTint: Color
         get() = when (type.lowercase()) {
-            "door_open" -> Color(0xFF4CAF50)
-            "door_close" -> Color(0xFF2196F3)
+            "door_unlock" -> Color(0xFF4CAF50)
+            "door_lock" -> Color(0xFF2196F3)
             "access_denied" -> Color(0xFFFFC756)
             "system_maintenance" -> Color(0xFF9C27B0)
             "security_alert" -> Color(0xFFF44336)
@@ -74,8 +74,8 @@ data class NotificationModel(
     
     val iconBackground: Color
         get() = when (type.lowercase()) {
-            "door_open" -> Color(0xFFE8F5E8)
-            "door_close" -> Color(0xFFE3F2FD)
+            "door_unlock" -> Color(0xFFE8F5E8)
+            "door_lock" -> Color(0xFFE3F2FD)
             "access_denied" -> Color(0xFFFFF8E1)
             "system_maintenance" -> Color(0xFFF3E5F5)
             "security_alert" -> Color(0xFFFFEBEE)

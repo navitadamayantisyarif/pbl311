@@ -66,6 +66,7 @@
     import com.authentic.smartdoor.ui.theme.PurplePrimary
     import com.authentic.smartdoor.ui.theme.abhayaLibre
     import com.authentic.smartdoor.ui.theme.jura
+    import com.authentic.smartdoor.ui.theme.lexend
     import kotlinx.coroutines.delay
     import kotlin.jvm.java
 
@@ -84,6 +85,14 @@
         
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    val perm = android.Manifest.permission.POST_NOTIFICATIONS
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(this, perm) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(perm), 1001)
+                    }
+                }
+            } catch (_: Exception) {}
             enableEdgeToEdge()
             setContent {
                 SecureDoorTheme {
@@ -227,16 +236,16 @@
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "SECUREDOOR",
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = abhayaLibre, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    text = "YOUR DOOR, YOUR CONTROL",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 34.sp),
+                                    color = Color.White,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "SecureDoor mengubah pintu biasa menjadi \ntempat rasa aman dimulai.",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = abhayaLibre, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+                                    text = "Kelola akses pintu, cek aktivitas, dan kontol pintu \nkapan pun hanya lewat pintu anda.",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = lexend, fontWeight = FontWeight.Medium, fontSize = 14.sp),
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()

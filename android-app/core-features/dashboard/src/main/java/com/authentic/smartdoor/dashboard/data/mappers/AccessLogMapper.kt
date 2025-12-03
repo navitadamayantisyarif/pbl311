@@ -15,7 +15,7 @@ fun AccessLogDto.toDomainModel(): AccessLog {
         timestamp = timestamp,
         success = success,
         method = method ?: "UNKNOWN",
-        ipAddress = ip_address,
+        ipAddress = ip_address?.ifBlank { "-" } ?: "-",
         cameraCaptureId = camera_capture_id?.toString(),
         user = user?.let { userDto ->
             User(

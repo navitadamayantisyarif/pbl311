@@ -16,36 +16,20 @@ class GoogleSignInHelper @Inject constructor(
 
     fun getGoogleSignInClient(): GoogleSignInClient {
         return try {
-            // Use the web client ID from strings.xml
-            val clientId = try {
-                val id = context.getString(R.string.default_web_client_id)
-                android.util.Log.d("GoogleSignInHelper", "Client ID from strings.xml: $id")
-                id
-            } catch (e: Exception) {
-                android.util.Log.e("GoogleSignInHelper", "Failed to get Client ID from strings.xml: ${e.message}")
-                // Fallback client ID - replace with your actual web client ID
-                "904749622966-cjdllvu4eatk6tr8dlvspggops8cvdpl.apps.googleusercontent.com"
-            }
-            
-            // Try using Android Client ID instead of Web Client ID
-            val finalClientId = "904749622966-cjdllvu4eatk6tr8dlvspggops8cvdpl.apps.googleusercontent.com"
-            android.util.Log.d("GoogleSignInHelper", "Using Android Client ID: $finalClientId")
+            val clientId = context.getString(R.string.default_web_client_id)
+            android.util.Log.d("GoogleSignInHelper", "Using Web Client ID: $clientId")
 
-            android.util.Log.d("GoogleSignInHelper", "Using Client ID: $finalClientId")
-
-            if (finalClientId.isEmpty() || finalClientId.contains("YOUR_CLIENT_ID")) {
-                throw IllegalStateException("Google Client ID not properly configured. Please add valid client ID to strings.xml")
+            require(clientId.isNotEmpty() && !clientId.contains("YOUR_CLIENT_ID")) {
+                "Google Client ID not properly configured. Please add valid client ID to strings.xml"
             }
 
-            // Try without requestIdToken first
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .requestProfile()
+                .requestIdToken(clientId)
                 .build()
-            
-            android.util.Log.d("GoogleSignInHelper", "GoogleSignInOptions without requestIdToken")
 
-            android.util.Log.d("GoogleSignInHelper", "GoogleSignInOptions created successfully")
+            android.util.Log.d("GoogleSignInHelper", "GoogleSignInOptions with requestIdToken")
             GoogleSignIn.getClient(context, gso)
         } catch (e: Exception) {
             android.util.Log.e("GoogleSignInHelper", "Failed to initialize Google Sign-In: ${e.message}", e)

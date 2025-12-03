@@ -3,6 +3,7 @@
 const db = require('../models');
 const logger = require('../utils/logger');
 const { Op } = require('sequelize');
+const { sendToToken } = require('../utils/fcm');
 
 async function getNotifications(req, res, next) {
   try {
@@ -89,4 +90,43 @@ async function markRead(req, res, next) {
   }
 }
 
-module.exports = { getNotifications, markRead };
+async function registerToken(req, res, next) {
+  try {
+    const { fcm_token } = req.body;
+    if (!fcm_token || typeof fcm_token !== 'string') {
+      return res.status(400).json({ success: false, error: 'FCM token is required', code: 'MISSING_FCM_TOKEN' });
+    }
+    const userId = req.user.userId;
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found', code: 'USER_NOT_FOUND' });
+    }
+    await user.update({ fcm_token });
+    res.json({ success: true, message: 'FCM token registered', data: { user_id: userId } });
+  } catch (error) {
+    logger.error('Register FCM token error:', error);
+    next(error);
+  }
+}
+
+async function pushTest(req, res, next) {
+  try {
+    const { title = 'SecureDoor', body = 'Test push notification' } = req.body || {};
+    const userId = req.user.userId;
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found', code: 'USER_NOT_FOUND' });
+    }
+    if (!user.fcm_token) {
+      return res.status(400).json({ success: false, error: 'FCM token not registered', code: 'FCM_TOKEN_MISSING' });
+    }
+    const messageId = await sendToToken(user.fcm_token, { title, body });
+    await db.Notification.create({ user_id: user.id, type: 'push_test', title, message: body, read: false });
+    res.json({ success: true, message: 'Push sent', data: { message_id: messageId } });
+  } catch (error) {
+    logger.error('Push test error:', error);
+    next(error);
+  }
+}
+
+module.exports = { getNotifications, markRead, registerToken, pushTest };

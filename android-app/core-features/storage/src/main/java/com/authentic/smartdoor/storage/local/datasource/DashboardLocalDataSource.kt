@@ -16,11 +16,14 @@ interface DashboardLocalDataSource {
     fun getNotificationsFlow(): Flow<List<NotificationEntity>>
     suspend fun markNotificationsAsRead(notificationIds: List<String>)
     suspend fun clearAll()
+    suspend fun saveAccessLogs(logs: List<com.authentic.smartdoor.storage.local.entities.AccessLogEntity>)
+    suspend fun getRecentAccessLogs(limit: Int = 50): List<com.authentic.smartdoor.storage.local.entities.AccessLogEntity>
 }
 
 class DashboardLocalDataSourceImpl @Inject constructor(
     private val doorStatusDao: DoorStatusDao,
-    private val notificationDao: NotificationDao
+    private val notificationDao: NotificationDao,
+    private val accessLogDao: com.authentic.smartdoor.storage.local.dao.AccessLogDao
 ) : DashboardLocalDataSource {
     
     override suspend fun saveDoorStatuses(doors: List<DoorStatusEntity>) {
@@ -40,7 +43,7 @@ class DashboardLocalDataSourceImpl @Inject constructor(
     }
     
     override suspend fun getNotifications(): List<NotificationEntity> {
-        return notificationDao.getNotificationsForUser("") // Get all notifications
+        return notificationDao.getAllNotifications()
     }
     
     override fun getNotificationsFlow(): Flow<List<NotificationEntity>> {
@@ -54,5 +57,13 @@ class DashboardLocalDataSourceImpl @Inject constructor(
     override suspend fun clearAll() {
         doorStatusDao.clear()
         notificationDao.clear()
+    }
+
+    override suspend fun saveAccessLogs(logs: List<com.authentic.smartdoor.storage.local.entities.AccessLogEntity>) {
+        logs.forEach { accessLogDao.insertLog(it) }
+    }
+
+    override suspend fun getRecentAccessLogs(limit: Int): List<com.authentic.smartdoor.storage.local.entities.AccessLogEntity> {
+        return accessLogDao.getRecentLogs(limit)
     }
 }

@@ -44,7 +44,7 @@ fun NotificationDto.toEntity(): NotificationEntity {
         id = id.toString(),
         userId = user_id?.toString() ?: "",
         type = type,
-        title = type.replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } },
+        title = title,
         message = message,
         read = read,
         createdAt = createdAtMillis
@@ -63,11 +63,13 @@ fun AccessLogDto.toEntity(): AccessLogEntity {
     return AccessLogEntity(
         id = id.toString(),
         userId = user_id.toString(),
+        doorId = door_id.toString(),
         action = action,
         timestamp = timestampMillis,
         success = success,
         method = method ?: "UNKNOWN",
-        ipAddress = ip_address
+        ipAddress = ip_address?.ifBlank { "-" } ?: "-",
+        cameraCaptureId = camera_capture_id?.toString()
     )
 }
 
@@ -80,7 +82,7 @@ fun AccessLogDto.toGenericAccessLog(): Nonuple<String, String, String, String, S
         timestamp,
         success,
         method ?: "UNKNOWN",
-        ip_address,
+        ip_address?.ifBlank { "-" } ?: "-",
         camera_capture_id?.toString()
     )
 }
@@ -115,7 +117,3 @@ data class Nonuple<A, B, C, D, E, F, G, H, I>(
     val eighth: H,
     val ninth: I
 )
-
-
-
-

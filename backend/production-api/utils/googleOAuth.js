@@ -12,15 +12,10 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
  */
 async function verifyGoogleToken(idToken) {
   if (!GOOGLE_CLIENT_ID) {
-    // In development, we might not have Google Client ID set up
-    // Return a mock verification for development purposes
-    logger.warn('GOOGLE_CLIENT_ID not set. Skipping token verification in development mode.');
-    return {
-      sub: 'mock_google_id',
-      email: 'mock@example.com',
-      name: 'Mock User',
-      picture: 'https://via.placeholder.com/150'
-    };
+    const err = new Error('GOOGLE_CLIENT_ID not configured on server');
+    err.code = 'GOOGLE_CLIENT_ID_MISSING';
+    err.statusCode = 500;
+    throw err;
   }
 
   try {
@@ -46,6 +41,7 @@ async function verifyGoogleToken(idToken) {
     logger.error('Google token verification error:', error);
     const err = new Error('Invalid Google ID token');
     err.code = 'INVALID_GOOGLE_TOKEN';
+    err.statusCode = 401;
     throw err;
   }
 }

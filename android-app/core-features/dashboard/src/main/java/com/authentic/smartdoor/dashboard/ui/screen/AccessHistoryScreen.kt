@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -127,26 +128,53 @@ fun AccessHistoryScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFFF7F6FF))
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                }
+                if (uiState.accessLogs.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFFF7F6FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "No access history",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Tidak ada riwayat akses",
+                                color = Color.Gray,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Semua aktivitas akses akan muncul di sini",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFFF7F6FF))
+                            .padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item { Spacer(Modifier.height(8.dp)) }
 
-                items(uiState.accessLogs) { accessLog ->
-                    AccessHistoryCard(
-                        accessLog = accessLog,
-                        onClick = { onNavigateToDetail(accessLog) }
-                    )
-                }
+                        items(uiState.accessLogs) { accessLog ->
+                            AccessHistoryCard(
+                                accessLog = accessLog,
+                                onClick = { onNavigateToDetail(accessLog) }
+                            )
+                        }
 
-                item {
-                    Spacer(Modifier.height(20.dp))
+                        item { Spacer(Modifier.height(20.dp)) }
+                    }
                 }
             }
         }
@@ -174,7 +202,7 @@ fun AccessHistoryScreen(
         }
 
     }
-}
+
 
 @Composable
 private fun AccessHistoryCard(
