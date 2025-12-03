@@ -149,3 +149,6 @@ node_modules/
 # Build folders
 dist/
 build/
+
+backend/production-api/*firebase*.json
+android-app/core-features/app/google-services.json
